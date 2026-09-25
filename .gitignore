@@ -28,6 +28,11 @@ venv/
 secrets.yaml
 secrets/*.yaml
 
+# Logic analyzer / scope captures (large, host-specific; keep notes in research/)
+*.sal
+*.logicdata
+*.sr
+
 # Editors
 .vscode/
 .idea/
