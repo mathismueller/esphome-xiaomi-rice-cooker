@@ -1,0 +1,35 @@
+# Project scratch space (see AGENT.md) - never committed
+tmp/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# uv / venv
+.venv/
+venv/
+.uv/
+
+# ESPHome / firmware build artifacts
+.esphome/
+*.bin
+*.elf
+*.map
+
+# Secrets - tokens, wifi credentials, etc.
+.env
+secrets.yaml
+secrets/*.yaml
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
