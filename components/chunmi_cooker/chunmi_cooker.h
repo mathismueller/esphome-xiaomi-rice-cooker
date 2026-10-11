@@ -6,6 +6,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/button/button.h"
+#include "esphome/core/automation.h"
 
 namespace esphome {
 namespace chunmi_cooker {
@@ -33,11 +34,16 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
 
   void set_network_state(const std::string &state);
 
+  void add_on_wifi_reset_callback(std::function<void()> callback) {
+    this->wifi_reset_callback_.add(std::move(callback));
+  }
+
   // Command dispatch actions
   void cancel();
   void acknowledge();
   void mute();
   void refresh();
+  void start_fallback_ap();
 
  protected:
   void handle_line_(const std::string &line);
@@ -62,6 +68,15 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
 
   binary_sensor::BinarySensor *pot_present_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *error_binary_sensor_{nullptr};
+
+  CallbackManager<void()> wifi_reset_callback_;
+};
+
+class WiFiResetTrigger : public Trigger<> {
+ public:
+  explicit WiFiResetTrigger(ChunmiCooker *parent) {
+    parent->add_on_wifi_reset_callback([this]() { this->trigger(); });
+  }
 };
 
 class CancelButton : public button::Button, public Component {

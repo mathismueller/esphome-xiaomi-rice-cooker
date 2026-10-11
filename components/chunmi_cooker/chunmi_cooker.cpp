@@ -1,6 +1,15 @@
 #include "chunmi_cooker.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/defines.h"
+
+#ifdef USE_WIFI
+#include "esphome/components/wifi/wifi_component.h"
+#endif
+
+#ifdef USE_CAPTIVE_PORTAL
+#include "esphome/components/captive_portal/captive_portal.h"
+#endif
 
 #include <ArduinoJson.h>
 
@@ -44,6 +53,21 @@ void ChunmiCooker::refresh() {
     this->last_button_text_sensor_->publish_state("Refresh");
   }
   this->pending_command_ = "down get_prop \"all\"\r";
+}
+
+void ChunmiCooker::start_fallback_ap() {
+  ESP_LOGW(TAG, "Triggering Fallback AP and Captive Portal...");
+  this->set_network_state("unprov");
+#ifdef USE_WIFI
+  if (wifi::global_wifi_component != nullptr) {
+    wifi::global_wifi_component->clear_sta();
+  }
+#endif
+#ifdef USE_CAPTIVE_PORTAL
+  if (captive_portal::global_captive_portal != nullptr) {
+    captive_portal::global_captive_portal->start();
+  }
+#endif
 }
 
 void ChunmiCooker::setup() {
@@ -138,6 +162,16 @@ void ChunmiCooker::handle_line_(const std::string &line) {
     this->handle_event_(line);
   } else if (line.rfind("props ", 0) == 0) {
     this->handle_props_(line);
+  } else if (line == "restore" || line == "factory") {
+    ESP_LOGW(TAG, "Host MCU requested Wi-Fi / Factory reset (%s)!", line.c_str());
+    if (this->last_button_text_sensor_ != nullptr) {
+      this->last_button_text_sensor_->publish_state("wifi_reset");
+    }
+    if (this->last_event_text_sensor_ != nullptr) {
+      this->last_event_text_sensor_->publish_state("wifi_reset");
+    }
+    this->start_fallback_ap();
+    this->wifi_reset_callback_.call();
   } else if (line.find("model chunmi.cooker.normal2") != std::string::npos) {
     ESP_LOGI(TAG, "Host MCU confirmed model: %s", line.c_str());
     this->handshake_done_ = true;
