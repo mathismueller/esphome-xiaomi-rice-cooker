@@ -95,16 +95,20 @@ classDiagram
 
 | Entity Category | Entity Name | Type | Source Field / Event | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Status** | Operation Mode | `text_sensor` | Status Array Index 0 (`func`) | `waiting`, `running`, `autokeepwarm`, `error` |
-| **Status** | Cooking Stage | `text_sensor` | Status Array Index 2 (`stage`) | Current cooking phase (e.g. "Boiling", "Braising") |
-| **Sensor** | Temperature | `sensor` | Status Array Index 3 (`temp`) | Ambient pot temperature in °C |
-| **Sensor** | Remaining Time | `sensor` | Status Array Index 4 (`t_func`)| Countdown timer in minutes |
-| **Sensor** | Total Duration | `sensor` | Status Array Index 6 (`t_cook`)| Total profile cooking duration |
+| **Status** | Cooker Mode | `text_sensor` | Status Array Index 0 (`func`) | `waiting`, `running`, `autokeepwarm`, `error` |
+| **Status** | Cooker Stage | `text_sensor` | Status Array Index 2 (`stage`) | Current cooking phase (e.g. "Idle", "Boiling", "Braising") |
+| **Status** | Cooker Menu | `text_sensor` | Status Array Index 1 (`menu`) | Selected recipe: Standard Rice, Quick Rice, Porridge, Keep Warm, Favorite / Custom |
+| **Status** | Cooker Last Button | `text_sensor` | `props button_pressed` / Actions | Name of the last pressed physical or virtual button |
+| **Status** | Cooker Last Event | `text_sensor` | `event *` lines | Most recent hardware event/alarm notification |
+| **Sensor** | Cooker Temperature | `sensor` | Status Array Index 3 (`temp`) | Ambient pot temperature in °C |
+| **Sensor** | Cooker Remaining Time | `sensor` | Status Array Index 4 (`t_func`)| Countdown timer in minutes |
+| **Sensor** | Cooker Program Duration | `sensor` | Status Array Index 6 (`t_cook`)| Total profile cooking duration in minutes |
 | **Binary Sensor**| Inner Pot Present | `binary_sensor`| `event nopan` / Status | `ON` when pot is inserted, `OFF` when removed |
-| **Binary Sensor**| Cooker Fault / Error| `binary_sensor`| Status index 0 / `event *` | `ON` if any safety cutoff is active |
-| **Control** | Start Standard Rice | `button` | Sends `down set_start "<profile>"\r` | Triggers standard rice cooking session |
-| **Control** | Cancel / Stop | `button` | Sends `down set_func "end02"\r` | Immediately cancels active program |
-| **Control** | Recipe Preset | `select` | Selected Profile | Choose Standard Rice, Quick Rice, Porridge |
+| **Binary Sensor**| Cooker Error | `binary_sensor`| Status index 0 / `event *` | `ON` if any safety cutoff is active |
+| **Control** | Cooker Cancel / Stop | `button` | Sends `down set_func "end02"\r` | Immediately cancels active program or warming |
+| **Control** | Cooker Acknowledge | `button` | Sends `down set_func "ack"\r` | Acknowledges and silences active warning chimes |
+| **Control** | Cooker Mute Warnings | `button` | Sends `down set_func "nowarn"\r` | Suppresses recurring reminder beeps |
+| **Control** | Cooker Refresh Status | `button` | Sends `down get_prop "all"\r` | Triggers immediate status refresh |
 
 ---
 
