@@ -9,6 +9,8 @@ CONF_MENU = "menu"
 CONF_LAST_BUTTON = "last_button"
 CONF_LAST_EVENT = "last_event"
 CONF_RAW_STATUS = "raw_status"
+CONF_HARDWARE_VERSION = "hardware_version"
+CONF_MCU_VERSION = "mcu_version"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -30,6 +32,12 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_RAW_STATUS): text_sensor.text_sensor_schema(
             icon="mdi:code-json",
+        ),
+        cv.Optional(CONF_HARDWARE_VERSION): text_sensor.text_sensor_schema(
+            icon="mdi:chip",
+        ),
+        cv.Optional(CONF_MCU_VERSION): text_sensor.text_sensor_schema(
+            icon="mdi:numeric",
         ),
     }
 )
@@ -55,3 +63,9 @@ async def to_code(config):
     if CONF_RAW_STATUS in config:
         sens = await text_sensor.new_text_sensor(config[CONF_RAW_STATUS])
         cg.add(hub.set_raw_status_text_sensor(sens))
+    if CONF_HARDWARE_VERSION in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_HARDWARE_VERSION])
+        cg.add(hub.set_hardware_version_text_sensor(sens))
+    if CONF_MCU_VERSION in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_MCU_VERSION])
+        cg.add(hub.set_mcu_version_text_sensor(sens))

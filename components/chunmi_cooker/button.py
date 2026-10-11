@@ -8,10 +8,26 @@ AcknowledgeButton = chunmi_cooker_ns.class_("AcknowledgeButton", button.Button, 
 MuteButton = chunmi_cooker_ns.class_("MuteButton", button.Button, cg.Component)
 RefreshButton = chunmi_cooker_ns.class_("RefreshButton", button.Button, cg.Component)
 
+StartStandardRiceButton = chunmi_cooker_ns.class_("StartStandardRiceButton", button.Button, cg.Component)
+StartQuickRiceButton = chunmi_cooker_ns.class_("StartQuickRiceButton", button.Button, cg.Component)
+StartPorridgeButton = chunmi_cooker_ns.class_("StartPorridgeButton", button.Button, cg.Component)
+StartKeepWarmButton = chunmi_cooker_ns.class_("StartKeepWarmButton", button.Button, cg.Component)
+StartCookingButton = chunmi_cooker_ns.class_("StartCookingButton", button.Button, cg.Component)
+StartCakeButton = chunmi_cooker_ns.class_("StartCakeButton", button.Button, cg.Component)
+StartSelectedMenuButton = chunmi_cooker_ns.class_("StartSelectedMenuButton", button.Button, cg.Component)
+
 CONF_CANCEL = "cancel"
 CONF_ACKNOWLEDGE = "acknowledge"
 CONF_MUTE = "mute"
 CONF_REFRESH = "refresh"
+
+CONF_START_STANDARD_RICE = "start_standard_rice"
+CONF_START_QUICK_RICE = "start_quick_rice"
+CONF_START_PORRIDGE = "start_porridge"
+CONF_START_KEEP_WARM = "start_keep_warm"
+CONF_START_COOKING = "start_cooking"
+CONF_START_CAKE = "start_cake"
+CONF_START_SELECTED_MENU = "start_selected_menu"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -32,21 +48,56 @@ CONFIG_SCHEMA = cv.Schema(
             RefreshButton,
             icon="mdi:refresh",
         ),
+        cv.Optional(CONF_START_SELECTED_MENU): button.button_schema(
+            StartSelectedMenuButton,
+            icon="mdi:play",
+        ),
+        cv.Optional(CONF_START_STANDARD_RICE): button.button_schema(
+            StartStandardRiceButton,
+            icon="mdi:rice",
+        ),
+        cv.Optional(CONF_START_QUICK_RICE): button.button_schema(
+            StartQuickRiceButton,
+            icon="mdi:clock-fast",
+        ),
+        cv.Optional(CONF_START_PORRIDGE): button.button_schema(
+            StartPorridgeButton,
+            icon="mdi:bowl-mix",
+        ),
+        cv.Optional(CONF_START_KEEP_WARM): button.button_schema(
+            StartKeepWarmButton,
+            icon="mdi:heat-wave",
+        ),
+        cv.Optional(CONF_START_COOKING): button.button_schema(
+            StartCookingButton,
+            icon="mdi:pot-steam",
+        ),
+        cv.Optional(CONF_START_CAKE): button.button_schema(
+            StartCakeButton,
+            icon="mdi:cake-variant",
+        ),
     }
 )
 
 
 async def to_code(config):
     hub = await cg.get_variable(config[CONF_CHUNMI_COOKER_ID])
-    if CONF_CANCEL in config:
-        b = await button.new_button(config[CONF_CANCEL])
-        cg.add(b.set_parent(hub))
-    if CONF_ACKNOWLEDGE in config:
-        b = await button.new_button(config[CONF_ACKNOWLEDGE])
-        cg.add(b.set_parent(hub))
-    if CONF_MUTE in config:
-        b = await button.new_button(config[CONF_MUTE])
-        cg.add(b.set_parent(hub))
-    if CONF_REFRESH in config:
-        b = await button.new_button(config[CONF_REFRESH])
-        cg.add(b.set_parent(hub))
+    button_configs = [
+        (CONF_CANCEL, CancelButton),
+        (CONF_ACKNOWLEDGE, AcknowledgeButton),
+        (CONF_MUTE, MuteButton),
+        (CONF_REFRESH, RefreshButton),
+        (CONF_START_SELECTED_MENU, StartSelectedMenuButton),
+        (CONF_START_STANDARD_RICE, StartStandardRiceButton),
+        (CONF_START_QUICK_RICE, StartQuickRiceButton),
+        (CONF_START_PORRIDGE, StartPorridgeButton),
+        (CONF_START_KEEP_WARM, StartKeepWarmButton),
+        (CONF_START_COOKING, StartCookingButton),
+        (CONF_START_CAKE, StartCakeButton),
+    ]
+
+    for conf_key, _ in button_configs:
+        if conf_key in config:
+            b = await button.new_button(config[conf_key])
+            await cg.register_component(b, config[conf_key])
+            cg.add(b.set_parent(hub))

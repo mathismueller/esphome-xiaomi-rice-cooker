@@ -42,6 +42,8 @@ sensor:
       name: "Cooker Remaining Time"
     duration:
       name: "Cooker Program Duration"
+    delay_time:
+      name: "Cooker Delay Time"
 
 text_sensor:
   - platform: chunmi_cooker
@@ -55,6 +57,10 @@ text_sensor:
       name: "Cooker Last Button"
     last_event:
       name: "Cooker Last Event"
+    hardware_version:
+      name: "Cooker Hardware Version"
+    mcu_version:
+      name: "Cooker MCU Version"
 
 binary_sensor:
   - platform: chunmi_cooker
@@ -62,6 +68,15 @@ binary_sensor:
       name: "Inner Pot Present"
     error:
       name: "Cooker Error"
+    auto_keep_warm:
+      name: "Cooker Auto Keep Warm"
+    lid_open_warning:
+      name: "Cooker Lid Open Warning"
+
+select:
+  - platform: chunmi_cooker
+    menu_select:
+      name: "Cooker Menu Select"
 
 button:
   - platform: chunmi_cooker
@@ -73,6 +88,20 @@ button:
       name: "Cooker Mute Warnings"
     refresh:
       name: "Cooker Refresh Status"
+    start_selected_menu:
+      name: "Cooker Start Selected Menu"
+    start_quick_rice:
+      name: "Cooker Start Quick Rice"
+    start_standard_rice:
+      name: "Cooker Start Standard Rice"
+    start_porridge:
+      name: "Cooker Start Porridge"
+    start_keep_warm:
+      name: "Cooker Start Keep Warm"
+    start_cooking:
+      name: "Cooker Start Cooking"
+    start_cake:
+      name: "Cooker Start Cake"
 
 # Home Assistant Native API
 api:

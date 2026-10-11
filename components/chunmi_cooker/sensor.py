@@ -13,6 +13,7 @@ from esphome.const import (
 from . import ChunmiCooker, CONF_CHUNMI_COOKER_ID
 
 CONF_REMAINING_TIME = "remaining_time"
+CONF_DELAY_TIME = "delay_time"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -35,6 +36,12 @@ CONFIG_SCHEMA = cv.Schema(
             device_class=DEVICE_CLASS_DURATION,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
+        cv.Optional(CONF_DELAY_TIME): sensor.sensor_schema(
+            unit_of_measurement=UNIT_MINUTE,
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
     }
 )
 
@@ -50,3 +57,6 @@ async def to_code(config):
     if CONF_DURATION in config:
         sens = await sensor.new_sensor(config[CONF_DURATION])
         cg.add(hub.set_duration_sensor(sens))
+    if CONF_DELAY_TIME in config:
+        sens = await sensor.new_sensor(config[CONF_DELAY_TIME])
+        cg.add(hub.set_delay_time_sensor(sens))
