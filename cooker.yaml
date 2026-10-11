@@ -51,8 +51,6 @@ text_sensor:
       name: "Cooker Stage"
     menu:
       name: "Cooker Menu"
-    raw_status:
-      name: "Cooker Raw Status"
 
 binary_sensor:
   - platform: chunmi_cooker

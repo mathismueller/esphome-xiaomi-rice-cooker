@@ -68,12 +68,6 @@ void ChunmiCooker::loop() {
 }
 
 void ChunmiCooker::handle_line_(const std::string &line) {
-  ESP_LOGD(TAG, "MCU RX: %s", line.c_str());
-
-  if (this->raw_status_text_sensor_ != nullptr) {
-    this->raw_status_text_sensor_->publish_state(line);
-  }
-
   if (line == "get_down") {
     if (!this->pending_command_.empty()) {
       ESP_LOGD(TAG, "Dispatching pending command: %s", this->pending_command_.c_str());
@@ -83,6 +77,12 @@ void ChunmiCooker::handle_line_(const std::string &line) {
       this->write_str("down none\r");
     }
     return;
+  }
+
+  ESP_LOGD(TAG, "MCU RX: %s", line.c_str());
+
+  if (this->raw_status_text_sensor_ != nullptr) {
+    this->raw_status_text_sensor_->publish_state(line);
   }
 
   if (line.rfind("result \"", 0) == 0) {
@@ -194,6 +194,11 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
     float dur_val = strtof(t_cook_str, nullptr);
     this->duration_sensor_->publish_state(dur_val);
   }
+
+  ESP_LOGI(TAG, "Cooker Status: Mode=%s, Temp=%s°C, Remaining=%s min",
+           func_str ? func_str : "null",
+           temp_str ? temp_str : "null",
+           t_func_str ? t_func_str : "null");
 }
 
 void ChunmiCooker::handle_event_(const std::string &event_str) {
