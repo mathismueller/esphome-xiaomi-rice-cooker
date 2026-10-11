@@ -1,0 +1,57 @@
+#pragma once
+
+#include "esphome/core/component.h"
+#include "esphome/components/uart/uart.h"
+#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
+
+namespace esphome {
+namespace chunmi_cooker {
+
+class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
+ public:
+  void setup() override;
+  void loop() override;
+  void update() override;
+  void dump_config() override;
+
+  void set_temperature_sensor(sensor::Sensor *s) { this->temperature_sensor_ = s; }
+  void set_remaining_time_sensor(sensor::Sensor *s) { this->remaining_time_sensor_ = s; }
+  void set_duration_sensor(sensor::Sensor *s) { this->duration_sensor_ = s; }
+
+  void set_mode_text_sensor(text_sensor::TextSensor *s) { this->mode_text_sensor_ = s; }
+  void set_stage_text_sensor(text_sensor::TextSensor *s) { this->stage_text_sensor_ = s; }
+  void set_menu_text_sensor(text_sensor::TextSensor *s) { this->menu_text_sensor_ = s; }
+  void set_raw_status_text_sensor(text_sensor::TextSensor *s) { this->raw_status_text_sensor_ = s; }
+
+  void set_pot_present_binary_sensor(binary_sensor::BinarySensor *s) { this->pot_present_binary_sensor_ = s; }
+  void set_error_binary_sensor(binary_sensor::BinarySensor *s) { this->error_binary_sensor_ = s; }
+
+  void set_network_state(const std::string &state);
+
+ protected:
+  void handle_line_(const std::string &line);
+  void parse_json_result_(const std::string &json_str);
+  void handle_event_(const std::string &event_str);
+  void handle_props_(const std::string &props_str);
+
+  std::string rx_buffer_;
+  std::string pending_command_;
+  bool handshake_done_{false};
+
+  sensor::Sensor *temperature_sensor_{nullptr};
+  sensor::Sensor *remaining_time_sensor_{nullptr};
+  sensor::Sensor *duration_sensor_{nullptr};
+
+  text_sensor::TextSensor *mode_text_sensor_{nullptr};
+  text_sensor::TextSensor *stage_text_sensor_{nullptr};
+  text_sensor::TextSensor *menu_text_sensor_{nullptr};
+  text_sensor::TextSensor *raw_status_text_sensor_{nullptr};
+
+  binary_sensor::BinarySensor *pot_present_binary_sensor_{nullptr};
+  binary_sensor::BinarySensor *error_binary_sensor_{nullptr};
+};
+
+}  // namespace chunmi_cooker
+}  // namespace esphome
