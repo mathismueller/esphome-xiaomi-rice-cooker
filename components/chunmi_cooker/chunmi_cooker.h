@@ -5,6 +5,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/button/button.h"
 
 namespace esphome {
 namespace chunmi_cooker {
@@ -23,12 +24,20 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   void set_mode_text_sensor(text_sensor::TextSensor *s) { this->mode_text_sensor_ = s; }
   void set_stage_text_sensor(text_sensor::TextSensor *s) { this->stage_text_sensor_ = s; }
   void set_menu_text_sensor(text_sensor::TextSensor *s) { this->menu_text_sensor_ = s; }
+  void set_last_button_text_sensor(text_sensor::TextSensor *s) { this->last_button_text_sensor_ = s; }
+  void set_last_event_text_sensor(text_sensor::TextSensor *s) { this->last_event_text_sensor_ = s; }
   void set_raw_status_text_sensor(text_sensor::TextSensor *s) { this->raw_status_text_sensor_ = s; }
 
   void set_pot_present_binary_sensor(binary_sensor::BinarySensor *s) { this->pot_present_binary_sensor_ = s; }
   void set_error_binary_sensor(binary_sensor::BinarySensor *s) { this->error_binary_sensor_ = s; }
 
   void set_network_state(const std::string &state);
+
+  // Command dispatch actions
+  void cancel();
+  void acknowledge();
+  void mute();
+  void refresh();
 
  protected:
   void handle_line_(const std::string &line);
@@ -47,10 +56,60 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   text_sensor::TextSensor *mode_text_sensor_{nullptr};
   text_sensor::TextSensor *stage_text_sensor_{nullptr};
   text_sensor::TextSensor *menu_text_sensor_{nullptr};
+  text_sensor::TextSensor *last_button_text_sensor_{nullptr};
+  text_sensor::TextSensor *last_event_text_sensor_{nullptr};
   text_sensor::TextSensor *raw_status_text_sensor_{nullptr};
 
   binary_sensor::BinarySensor *pot_present_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *error_binary_sensor_{nullptr};
+};
+
+class CancelButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) {
+      this->parent_->cancel();
+    }
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
+class AcknowledgeButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) {
+      this->parent_->acknowledge();
+    }
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
+class MuteButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) {
+      this->parent_->mute();
+    }
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
+class RefreshButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) {
+      this->parent_->refresh();
+    }
+  }
+  ChunmiCooker *parent_{nullptr};
 };
 
 }  // namespace chunmi_cooker

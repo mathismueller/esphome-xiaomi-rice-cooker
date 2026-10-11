@@ -14,6 +14,38 @@ void ChunmiCooker::set_network_state(const std::string &state) {
   this->pending_command_ = "down MIIO_net_change " + state + "\r";
 }
 
+void ChunmiCooker::cancel() {
+  ESP_LOGI(TAG, "Executing Cancel / Stop: down set_func \"end02\"");
+  if (this->last_button_text_sensor_ != nullptr) {
+    this->last_button_text_sensor_->publish_state("Cancel");
+  }
+  this->pending_command_ = "down set_func \"end02\"\r";
+}
+
+void ChunmiCooker::acknowledge() {
+  ESP_LOGI(TAG, "Executing Acknowledge Warning: down set_func \"ack\"");
+  if (this->last_button_text_sensor_ != nullptr) {
+    this->last_button_text_sensor_->publish_state("Acknowledge");
+  }
+  this->pending_command_ = "down set_func \"ack\"\r";
+}
+
+void ChunmiCooker::mute() {
+  ESP_LOGI(TAG, "Executing Mute / Disable Warnings: down set_func \"nowarn\"");
+  if (this->last_button_text_sensor_ != nullptr) {
+    this->last_button_text_sensor_->publish_state("Mute");
+  }
+  this->pending_command_ = "down set_func \"nowarn\"\r";
+}
+
+void ChunmiCooker::refresh() {
+  ESP_LOGI(TAG, "Manual Status Refresh: down get_prop \"all\"");
+  if (this->last_button_text_sensor_ != nullptr) {
+    this->last_button_text_sensor_->publish_state("Refresh");
+  }
+  this->pending_command_ = "down get_prop \"all\"\r";
+}
+
 void ChunmiCooker::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Chunmi Cooker UART interface...");
   this->rx_buffer_.reserve(256);
@@ -23,6 +55,12 @@ void ChunmiCooker::setup() {
   }
   if (this->error_binary_sensor_ != nullptr) {
     this->error_binary_sensor_->publish_state(false);
+  }
+  if (this->last_button_text_sensor_ != nullptr) {
+    this->last_button_text_sensor_->publish_state("None");
+  }
+  if (this->last_event_text_sensor_ != nullptr) {
+    this->last_event_text_sensor_->publish_state("None");
   }
 
   // Queue initial network status announcement to host MCU
@@ -38,13 +76,14 @@ void ChunmiCooker::dump_config() {
   LOG_TEXT_SENSOR("  ", "Mode", this->mode_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Stage", this->stage_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Menu", this->menu_text_sensor_);
+  LOG_TEXT_SENSOR("  ", "Last Button", this->last_button_text_sensor_);
+  LOG_TEXT_SENSOR("  ", "Last Event", this->last_event_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Raw Status", this->raw_status_text_sensor_);
   LOG_BINARY_SENSOR("  ", "Pot Present", this->pot_present_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Error", this->error_binary_sensor_);
 }
 
 void ChunmiCooker::update() {
-  ESP_LOGD(TAG, "Queueing cooker status poll: down get_prop \"all\"");
   this->pending_command_ = "down get_prop \"all\"\r";
 }
 
@@ -86,9 +125,13 @@ void ChunmiCooker::handle_line_(const std::string &line) {
   }
 
   if (line.rfind("result \"", 0) == 0) {
-    std::string payload = line.substr(7);
-    std::string json_str = "{\"result\":[" + payload + "]}";
-    this->parse_json_result_(json_str);
+    if (line.find(',') != std::string::npos) {
+      std::string payload = line.substr(7);
+      std::string json_str = "{\"result\":[" + payload + "]}";
+      this->parse_json_result_(json_str);
+    } else {
+      ESP_LOGI(TAG, "MCU Command Acknowledged: %s", line.c_str());
+    }
   } else if (line.rfind("{\"result\":", 0) == 0 || line.rfind("{\"id\":", 0) == 0) {
     this->parse_json_result_(line);
   } else if (line.rfind("event ", 0) == 0) {
@@ -130,6 +173,15 @@ static std::string decode_stage_name(const std::string &stage_hex) {
   return stage_hex;
 }
 
+static std::string decode_menu_name(const std::string &menu_id) {
+  if (menu_id == "0001") return "Standard Rice";
+  if (menu_id == "0002") return "Quick Rice";
+  if (menu_id == "0003") return "Porridge";
+  if (menu_id == "0004") return "Keep Warm";
+  if (menu_id == "0103") return "Favorite / Custom";
+  return "Preset (" + menu_id + ")";
+}
+
 void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, json_str);
@@ -162,7 +214,7 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   // Index 1: Menu profile ID
   const char *menu_str = result[1];
   if (menu_str != nullptr && this->menu_text_sensor_ != nullptr) {
-    this->menu_text_sensor_->publish_state(menu_str);
+    this->menu_text_sensor_->publish_state(decode_menu_name(menu_str));
   }
 
   // Index 2: Cooking Stage
@@ -204,6 +256,10 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
 void ChunmiCooker::handle_event_(const std::string &event_str) {
   ESP_LOGW(TAG, "MCU Alarm/Event: %s", event_str.c_str());
 
+  if (this->last_event_text_sensor_ != nullptr) {
+    this->last_event_text_sensor_->publish_state(event_str);
+  }
+
   if (event_str.find("event nopan") != std::string::npos) {
     ESP_LOGW(TAG, "Inner cooking pot removed!");
     if (this->pot_present_binary_sensor_ != nullptr) {
@@ -222,6 +278,20 @@ void ChunmiCooker::handle_event_(const std::string &event_str) {
 
 void ChunmiCooker::handle_props_(const std::string &props_str) {
   ESP_LOGI(TAG, "MCU Property update: %s", props_str.c_str());
+
+  if (props_str.rfind("props button_pressed \"", 0) == 0) {
+    size_t first = props_str.find('"');
+    size_t last = props_str.rfind('"');
+    if (first != std::string::npos && last != std::string::npos && last > first) {
+      std::string btn = props_str.substr(first + 1, last - first - 1);
+      ESP_LOGI(TAG, "Cooker Button Pressed: %s", btn.c_str());
+      if (this->last_button_text_sensor_ != nullptr) {
+        this->last_button_text_sensor_->publish_state(btn);
+      }
+      // Fast refresh on button press
+      this->pending_command_ = "down get_prop \"all\"\r";
+    }
+  }
 }
 
 }  // namespace chunmi_cooker

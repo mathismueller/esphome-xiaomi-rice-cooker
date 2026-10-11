@@ -6,6 +6,8 @@ from . import ChunmiCooker, CONF_CHUNMI_COOKER_ID
 
 CONF_STAGE = "stage"
 CONF_MENU = "menu"
+CONF_LAST_BUTTON = "last_button"
+CONF_LAST_EVENT = "last_event"
 CONF_RAW_STATUS = "raw_status"
 
 CONFIG_SCHEMA = cv.Schema(
@@ -19,6 +21,12 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_MENU): text_sensor.text_sensor_schema(
             icon="mdi:book-open-outline",
+        ),
+        cv.Optional(CONF_LAST_BUTTON): text_sensor.text_sensor_schema(
+            icon="mdi:gesture-tap-button",
+        ),
+        cv.Optional(CONF_LAST_EVENT): text_sensor.text_sensor_schema(
+            icon="mdi:bell-alert-outline",
         ),
         cv.Optional(CONF_RAW_STATUS): text_sensor.text_sensor_schema(
             icon="mdi:code-json",
@@ -38,6 +46,12 @@ async def to_code(config):
     if CONF_MENU in config:
         sens = await text_sensor.new_text_sensor(config[CONF_MENU])
         cg.add(hub.set_menu_text_sensor(sens))
+    if CONF_LAST_BUTTON in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_LAST_BUTTON])
+        cg.add(hub.set_last_button_text_sensor(sens))
+    if CONF_LAST_EVENT in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_LAST_EVENT])
+        cg.add(hub.set_last_event_text_sensor(sens))
     if CONF_RAW_STATUS in config:
         sens = await text_sensor.new_text_sensor(config[CONF_RAW_STATUS])
         cg.add(hub.set_raw_status_text_sensor(sens))

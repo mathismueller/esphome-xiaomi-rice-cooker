@@ -51,6 +51,10 @@ text_sensor:
       name: "Cooker Stage"
     menu:
       name: "Cooker Menu"
+    last_button:
+      name: "Cooker Last Button"
+    last_event:
+      name: "Cooker Last Event"
 
 binary_sensor:
   - platform: chunmi_cooker
@@ -58,6 +62,17 @@ binary_sensor:
       name: "Inner Pot Present"
     error:
       name: "Cooker Error"
+
+button:
+  - platform: chunmi_cooker
+    cancel:
+      name: "Cooker Cancel / Stop"
+    acknowledge:
+      name: "Cooker Acknowledge"
+    mute:
+      name: "Cooker Mute Warnings"
+    refresh:
+      name: "Cooker Refresh Status"
 
 # Home Assistant Native API
 api:
