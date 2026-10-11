@@ -135,6 +135,11 @@ The LPC11xx MCU executes continuous hardware safety diagnostics and broadcasts a
 | `event lvprotection\r\n` | AC mains under-voltage / brownout detected. | Safety shutdown. |
 | `event wirebroken\r\n` | Induction coil harness or thermistor wiring broken. | Immediate lockout. |
 
+### 5.3 System & Hardware Lifecycle Events
+- `reboot\r\n`: Emitted by host MCU upon logic reset or power-on.
+- `restore\r\n`: Emitted when the physical Wi-Fi reset button (`KEY` pin) is held. Causes the ESP to switch to Fallback AP / Captive Portal mode and send `down MIIO_net_change unprov\r` (orange pulsing LED).
+- `factory\r\n`: Emitted during factory self-test entry.
+
 ---
 
 ## 6. Command Execution Return Codes
