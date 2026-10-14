@@ -4,6 +4,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_MODE
 from . import ChunmiCooker, CONF_CHUNMI_COOKER_ID
 
+CONF_ERROR = "error"
 CONF_STAGE = "stage"
 CONF_MENU = "menu"
 CONF_LAST_BUTTON = "last_button"
@@ -11,6 +12,7 @@ CONF_LAST_EVENT = "last_event"
 CONF_RAW_STATUS = "raw_status"
 CONF_HARDWARE_VERSION = "hardware_version"
 CONF_MCU_VERSION = "mcu_version"
+CONF_FAVORITE = "favorite"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -39,6 +41,12 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_MCU_VERSION): text_sensor.text_sensor_schema(
             icon="mdi:numeric",
         ),
+        cv.Optional(CONF_ERROR): text_sensor.text_sensor_schema(
+            icon="mdi:alert-circle-outline",
+        ),
+        cv.Optional(CONF_FAVORITE): text_sensor.text_sensor_schema(
+            icon="mdi:star-outline",
+        ),
     }
 )
 
@@ -60,6 +68,12 @@ async def to_code(config):
     if CONF_LAST_EVENT in config:
         sens = await text_sensor.new_text_sensor(config[CONF_LAST_EVENT])
         cg.add(hub.set_last_event_text_sensor(sens))
+    if CONF_ERROR in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_ERROR])
+        cg.add(hub.set_error_text_sensor(sens))
+    if CONF_FAVORITE in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_FAVORITE])
+        cg.add(hub.set_favorite_text_sensor(sens))
     if CONF_RAW_STATUS in config:
         sens = await text_sensor.new_text_sensor(config[CONF_RAW_STATUS])
         cg.add(hub.set_raw_status_text_sensor(sens))

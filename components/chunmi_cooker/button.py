@@ -17,6 +17,7 @@ StartCakeButton = chunmi_cooker_ns.class_("StartCakeButton", button.Button, cg.C
 StartSushiRiceButton = chunmi_cooker_ns.class_("StartSushiRiceButton", button.Button, cg.Component)
 StartExpressRiceButton = chunmi_cooker_ns.class_("StartExpressRiceButton", button.Button, cg.Component)
 StartSelectedMenuButton = chunmi_cooker_ns.class_("StartSelectedMenuButton", button.Button, cg.Component)
+StartFavoriteButton = chunmi_cooker_ns.class_("StartFavoriteButton", button.Button, cg.Component)
 
 CONF_CANCEL = "cancel"
 CONF_ACKNOWLEDGE = "acknowledge"
@@ -32,6 +33,7 @@ CONF_START_CAKE = "start_cake"
 CONF_START_SUSHI_RICE = "start_sushi_rice"
 CONF_START_EXPRESS_RICE = "start_express_rice"
 CONF_START_SELECTED_MENU = "start_selected_menu"
+CONF_START_FAVORITE = "start_favorite"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -88,6 +90,10 @@ CONFIG_SCHEMA = cv.Schema(
             StartExpressRiceButton,
             icon="mdi:flash-outline",
         ),
+        cv.Optional(CONF_START_FAVORITE): button.button_schema(
+            StartFavoriteButton,
+            icon="mdi:star-play",
+        ),
     }
 )
 
@@ -108,6 +114,7 @@ async def to_code(config):
         (CONF_START_CAKE, StartCakeButton),
         (CONF_START_SUSHI_RICE, StartSushiRiceButton),
         (CONF_START_EXPRESS_RICE, StartExpressRiceButton),
+        (CONF_START_FAVORITE, StartFavoriteButton),
     ]
 
     for conf_key, _ in button_configs:

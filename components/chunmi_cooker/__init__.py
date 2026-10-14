@@ -36,6 +36,7 @@ StartAction = chunmi_cooker_ns.class_("StartAction", automation.Action)
 SetMenuAction = chunmi_cooker_ns.class_("SetMenuAction", automation.Action)
 CancelAction = chunmi_cooker_ns.class_("CancelAction", automation.Action)
 SendRawAction = chunmi_cooker_ns.class_("SendRawAction", automation.Action)
+SetInteractionAction = chunmi_cooker_ns.class_("SetInteractionAction", automation.Action)
 
 
 @automation.register_action(
@@ -110,4 +111,32 @@ async def send_raw_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config["command"], args, cg.std_string)
     cg.add(var.set_command(template_))
+    return var
+
+
+@automation.register_action(
+    "chunmi_cooker.set_interaction",
+    SetInteractionAction,
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(ChunmiCooker),
+            cv.Optional("settings", default="0607"): cv.templatable(cv.string),
+            cv.Optional("led_sec", default=5): cv.templatable(cv.uint8_t),
+            cv.Optional("lid_sec", default=4): cv.templatable(cv.uint8_t),
+            cv.Optional("alarm_sec", default=21): cv.templatable(cv.uint8_t),
+        }
+    ),
+    synchronous=True,
+)
+async def set_interaction_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    template_settings = await cg.templatable(config["settings"], args, cg.std_string)
+    cg.add(var.set_settings(template_settings))
+    template_led = await cg.templatable(config["led_sec"], args, cg.uint8)
+    cg.add(var.set_led_sec(template_led))
+    template_lid = await cg.templatable(config["lid_sec"], args, cg.uint8)
+    cg.add(var.set_lid_sec(template_lid))
+    template_alarm = await cg.templatable(config["alarm_sec"], args, cg.uint8)
+    cg.add(var.set_alarm_sec(template_alarm))
     return var

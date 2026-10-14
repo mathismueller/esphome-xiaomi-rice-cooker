@@ -1,6 +1,9 @@
 # Project scratch space (see AGENT.md) - never committed
 tmp/
 
+# ROM / Flash dumps
+dumps/
+
 # macOS
 .DS_Store
 

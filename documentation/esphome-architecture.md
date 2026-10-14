@@ -96,8 +96,10 @@ classDiagram
 | **Status** | Mode | `text_sensor` | Status Index 0 (`func`) | `waiting`, `running`, `autokeepwarm`, `error` |
 | **Status** | Stage | `text_sensor` | Status Index 2 (`stage`) | Current cooking phase (e.g. `Idle`, `Boiling`, `Braising`, `Finished`) |
 | **Status** | Menu | `text_sensor` | Status Index 1 (`menu`) | Selected recipe: `Standard Rice`, `Quick Rice`, `Porridge`, `Keep Warm`, etc. |
+| **Status** | Favorite | `text_sensor` | Status Index 10 (`favorite`) | Stored favorite recipe name (e.g. `Cooking / Steam`, `0103`) |
 | **Status** | Last Button | `text_sensor` | `props button_pressed` | Last pressed button (physical or virtual: `start`, `cancel`, `wifi_reset`) |
 | **Status** | Last Event | `text_sensor` | `event *` lines | Most recent hardware event/alarm notification |
+| **Status** | Error Description | `text_sensor` | `event *` / MCU status | Specific hardware fault description (`None`, `Bottom Sensor Fault`, etc.) |
 | **Status** | Hardware Version | `text_sensor` | Status Index 9 (`version`) | Host MCU hardware revision (e.g. `v3`) |
 | **Status** | MCU Version | `text_sensor` | Status Index 9 / handshake | Host MCU firmware revision (e.g. `v26`) |
 | **Sensor** | Temperature | `sensor` | Status Index 3 / Temp History | Real-time temperature in °C (ambient when idle, pot temp when cooking) |
@@ -119,23 +121,58 @@ classDiagram
 | **Control** | Start Cake | `button` | Sends `down set_start "<profile>"\r` | Starts Cake baking |
 | **Control** | Start Sushi Rice (Experimental) | `button` | Sends `down set_start "<profile>"\r` | Starts 50-min Sushi Rice profile |
 | **Control** | Start Express Rice (Experimental) | `button` | Sends `down set_start "<profile>"\r` | Starts 30-min Express Rice profile |
+| **Control** | Start Favorite | `button` | Sends `down set_start "<favorite>"\r` | Starts the stored favorite program |
 | **Control** | Acknowledge | `button` | Sends `down set_func "ack"\r` | Acknowledges active warning chime |
 | **Control** | Mute Warnings | `button` | Sends `down set_func "nowarn"\r` | Suppresses recurring reminder beeps |
 | **Control / Diagnostic** | Refresh Status | `button` | Sends `down get_prop "all"\r` | Triggers immediate status refresh |
 
-### 4.1 Home Assistant Entity Categorization
+### 4.1 Home Assistant Native API Services & Actions
+
+The ESPHome node exposes native services directly callable from Home Assistant automations or Developer Tools:
+
+| Service / Action | Parameters | Description |
+| :--- | :--- | :--- |
+| `set_interaction` | `settings` (str), `led_sec` (int), `lid_sec` (int), `alarm_sec` (int) | Configures appliance settings mask, LED timeout, lid alarm, and buzzer delay |
+| `set_led_timeout` | `seconds` (int) | Configures LED timeout delay in seconds while preserving other interaction settings |
+| `set_lid_warning_timeout` | `seconds` (int) | Configures lid open alarm threshold in seconds |
+| `set_alarm_delay` | `seconds` (int) | Configures snooze / warning repeat delay in seconds |
+| `send_raw_command` | `command` (str) | Diagnostic hook to issue arbitrary ASCII frames directly to the MCU |
+
+#### Action Invocation Examples (Home Assistant Automations & Scripts)
+
+```yaml
+# Example 1: Set display sleep timeout to 10 seconds
+action: esphome.xiaomi_rice_cooker_set_led_timeout
+data:
+  seconds: 10
+
+# Example 2: Update all interaction timeouts
+action: esphome.xiaomi_rice_cooker_set_interaction
+data:
+  settings: "0607"
+  led_sec: 5
+  lid_sec: 10
+  alarm_sec: 30
+
+# Example 3: Send diagnostic raw ASCII command
+action: esphome.xiaomi_rice_cooker_send_raw_command
+data:
+  command: "down get_prop \"all\""
+```
+
+### 4.2 Home Assistant Entity Categorization
 Entities are structured via native ESPHome/Home Assistant `entity_category` tags to ensure clean separation on device pages and dashboards:
 1. **Primary Controls & Actions** (Default category, rendered at top):
    - Menu Select (`select.menu_select`), Start Selected Menu, Cancel - Stop.
-   - Quick Start Presets (Quick Rice, Standard Rice, Porridge, Keep Warm, Cooking, Cake, Sushi Rice [Experimental], Express Rice [Experimental]).
+   - Quick Start Presets (Quick Rice, Standard Rice, Porridge, Keep Warm, Cooking, Cake, Sushi Rice [Experimental], Express Rice [Experimental], Start Favorite).
 2. **Primary Status & Cooking Telemetry** (Default category, rendered under Sensors):
-   - Remaining Time, Mode, Stage, Menu.
+   - Remaining Time, Mode, Stage, Menu, Favorite.
    - Temperature, Inner Pot Present, Auto Keep Warm, Lid Open Warning, Program Duration, Delay Time, Error.
 3. **Configuration** (`entity_category: config`, grouped under Configuration card in HA):
    - Acknowledge Warning Chime (`button.acknowledge`).
    - Mute Warnings (`button.mute`).
 4. **Diagnostics & Debug** (`entity_category: diagnostic`, tucked under Diagnostic card in HA):
-   - Last Button, Last Event, Hardware Version, MCU Version, Refresh Status.
+   - Last Button, Last Event, Error Description, Hardware Version, MCU Version, Refresh Status.
 
 ---
 

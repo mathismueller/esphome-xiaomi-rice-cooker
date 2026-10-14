@@ -68,6 +68,8 @@ button:
       name: "Start Sushi Rice (Experimental)"
     start_express_rice:
       name: "Start Express Rice (Experimental)"
+    start_favorite:
+      name: "Start Favorite"
 
     # --- Secondary Controls & Configuration ---
     acknowledge:
@@ -106,6 +108,8 @@ text_sensor:
       name: "Stage"
     menu:
       name: "Menu"
+    favorite:
+      name: "Favorite"
 
     # --- Internal & Diagnostics ---
     last_button:
@@ -113,6 +117,9 @@ text_sensor:
       entity_category: diagnostic
     last_event:
       name: "Last Event"
+      entity_category: diagnostic
+    error:
+      name: "Error Description"
       entity_category: diagnostic
     hardware_version:
       name: "Hardware Version"
@@ -138,6 +145,40 @@ binary_sensor:
 api:
   encryption:
     key: !secret api_encryption_key
+  services:
+    - service: set_interaction
+      variables:
+        settings: string
+        led_sec: int
+        lid_sec: int
+        alarm_sec: int
+      then:
+        - lambda: |-
+            id(my_cooker).set_interaction(settings, led_sec, lid_sec, alarm_sec);
+    - service: set_led_timeout
+      variables:
+        seconds: int
+      then:
+        - lambda: |-
+            id(my_cooker).set_led_timeout(seconds);
+    - service: set_lid_warning_timeout
+      variables:
+        seconds: int
+      then:
+        - lambda: |-
+            id(my_cooker).set_lid_warning_timeout(seconds);
+    - service: set_alarm_delay
+      variables:
+        seconds: int
+      then:
+        - lambda: |-
+            id(my_cooker).set_alarm_delay(seconds);
+    - service: send_raw_command
+      variables:
+        command: string
+      then:
+        - lambda: |-
+            id(my_cooker).send_raw_command(command);
 
 # Wi-Fi configuration with LED status triggers and fallback AP
 wifi:

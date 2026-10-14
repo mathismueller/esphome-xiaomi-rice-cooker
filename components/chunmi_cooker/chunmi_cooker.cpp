@@ -130,6 +130,50 @@ void ChunmiCooker::set_interaction(const std::string &settings, uint8_t led_sec,
   this->queue_command(cmd);
 }
 
+void ChunmiCooker::set_led_timeout(uint8_t sec) {
+  this->current_led_sec_ = sec;
+  this->set_interaction(this->current_settings_, sec, this->current_lid_sec_, this->current_alarm_sec_);
+}
+
+void ChunmiCooker::set_lid_warning_timeout(uint8_t sec) {
+  this->current_lid_sec_ = sec;
+  this->set_interaction(this->current_settings_, this->current_led_sec_, sec, this->current_alarm_sec_);
+}
+
+void ChunmiCooker::set_alarm_delay(uint8_t sec) {
+  this->current_alarm_sec_ = sec;
+  this->set_interaction(this->current_settings_, this->current_led_sec_, this->current_lid_sec_, sec);
+}
+
+void ChunmiCooker::start_favorite() {
+  if (this->favorite_raw_.empty()) {
+    ESP_LOGW(TAG, "Cannot start favorite: No favorite profile received from MCU yet");
+    return;
+  }
+  ESP_LOGI(TAG, "Starting stored favorite recipe: %s", this->favorite_raw_.c_str());
+  if (this->favorite_raw_ == "0001") {
+    this->start_profile(profiles::JINGZHU);
+  } else if (this->favorite_raw_ == "0002") {
+    this->start_profile(profiles::KUAIZHU);
+  } else if (this->favorite_raw_ == "0003") {
+    this->start_profile(profiles::ZHUZHOU);
+  } else if (this->favorite_raw_ == "0004") {
+    this->start_profile(profiles::BAOWEN);
+  } else if (this->favorite_raw_ == "0100" || this->favorite_raw_ == "0101" || this->favorite_raw_ == "0103") {
+    this->start_profile(profiles::COOKING);
+  } else if (this->favorite_raw_ == "0102") {
+    this->start_profile(profiles::CAKE);
+  } else if (this->favorite_raw_ == "0105") {
+    this->start_profile(profiles::SUSHI_RICE);
+  } else if (this->favorite_raw_ == "0106") {
+    this->start_profile(profiles::EXPRESS_RICE);
+  } else {
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd), "down set_start \"%s\"\r", this->favorite_raw_.c_str());
+    this->queue_command(cmd);
+  }
+}
+
 void ChunmiCooker::send_raw_command(const std::string &cmd) {
   std::string full_cmd = cmd;
   if (full_cmd.rfind("down ", 0) != 0) {
@@ -168,6 +212,9 @@ void ChunmiCooker::setup() {
   if (this->last_event_text_sensor_ != nullptr) {
     this->last_event_text_sensor_->publish_state("None");
   }
+  if (this->error_text_sensor_ != nullptr) {
+    this->error_text_sensor_->publish_state("None");
+  }
 
   // Queue initial network status announcement to host MCU
   this->set_network_state("local");
@@ -184,6 +231,8 @@ void ChunmiCooker::dump_config() {
   LOG_TEXT_SENSOR("  ", "Menu Text Sensor:", this->menu_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Last Button Text Sensor:", this->last_button_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Last Event Text Sensor:", this->last_event_text_sensor_);
+  LOG_TEXT_SENSOR("  ", "Error Text Sensor:", this->error_text_sensor_);
+  LOG_TEXT_SENSOR("  ", "Favorite Text Sensor:", this->favorite_text_sensor_);
   LOG_TEXT_SENSOR("  ", "MCU Version Text Sensor:", this->mcu_version_text_sensor_);
   LOG_TEXT_SENSOR("  ", "Hardware Version Text Sensor:", this->hardware_version_text_sensor_);
   LOG_BINARY_SENSOR("  ", "Pot Present Binary Sensor:", this->pot_present_binary_sensor_);
@@ -387,6 +436,17 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
         (!this->error_binary_sensor_->has_state() || this->error_binary_sensor_->state != is_err)) {
       this->error_binary_sensor_->publish_state(is_err);
     }
+    if (this->error_text_sensor_ != nullptr) {
+      if (is_err) {
+        if (!this->error_text_sensor_->has_state() || this->error_text_sensor_->state == "None") {
+          this->error_text_sensor_->publish_state("MCU Error");
+        }
+      } else {
+        if (this->error_text_sensor_->has_state() && this->error_text_sensor_->state != "None") {
+          this->error_text_sensor_->publish_state("None");
+        }
+      }
+    }
     if (mode != "error" && this->pot_present_binary_sensor_ != nullptr &&
         (!this->pot_present_binary_sensor_->has_state() || !this->pot_present_binary_sensor_->state)) {
       this->pot_present_binary_sensor_->publish_state(true);
@@ -462,6 +522,7 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   if (result.size() > 7) {
     const char *setting_str = result[7];
     if (setting_str != nullptr && strlen(setting_str) >= 2) {
+      this->current_settings_ = setting_str;
       char b0_hex[3] = {setting_str[0], setting_str[1], '\0'};
       int b0 = strtol(b0_hex, nullptr, 16);
       bool akw = (b0 & 0x04) != 0;
@@ -474,6 +535,19 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
           (!this->lid_open_warning_binary_sensor_->has_state() || this->lid_open_warning_binary_sensor_->state != low)) {
         this->lid_open_warning_binary_sensor_->publish_state(low);
       }
+    }
+  }
+
+  // Index 8: Delay / Interaction Timeouts (e.g. "050415")
+  if (result.size() > 8) {
+    const char *delay_str = result[8];
+    if (delay_str != nullptr && strlen(delay_str) >= 6) {
+      char led_hex[3] = {delay_str[0], delay_str[1], '\0'};
+      char lid_hex[3] = {delay_str[2], delay_str[3], '\0'};
+      char alarm_hex[3] = {delay_str[4], delay_str[5], '\0'};
+      this->current_led_sec_ = strtol(led_hex, nullptr, 16);
+      this->current_lid_sec_ = strtol(lid_hex, nullptr, 16);
+      this->current_alarm_sec_ = strtol(alarm_hex, nullptr, 16);
     }
   }
 
@@ -498,6 +572,19 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
         if (!this->mcu_version_text_sensor_->has_state() || this->mcu_version_text_sensor_->state != buf) {
           this->mcu_version_text_sensor_->publish_state(buf);
         }
+      }
+    }
+  }
+
+  // Index 10: Stored Favorite Profile ID (e.g. "0103")
+  if (result.size() > 10) {
+    const char *fav_str = result[10];
+    if (fav_str != nullptr) {
+      this->favorite_raw_ = fav_str;
+      std::string fav_name = decode_menu_name(fav_str);
+      if (this->favorite_text_sensor_ != nullptr &&
+          (!this->favorite_text_sensor_->has_state() || this->favorite_text_sensor_->state != fav_name)) {
+        this->favorite_text_sensor_->publish_state(fav_name);
       }
     }
   }
@@ -544,6 +631,31 @@ void ChunmiCooker::handle_event_(const std::string &event_str) {
     ESP_LOGE(TAG, "Hardware fault event: %s", event_str.c_str());
     if (this->error_binary_sensor_ != nullptr) {
       this->error_binary_sensor_->publish_state(true);
+    }
+    if (this->error_text_sensor_ != nullptr) {
+      std::string err_desc;
+      if (event_str.find("bottomsensorbad") != std::string::npos) {
+        err_desc = "Bottom Sensor Fault";
+      } else if (event_str.find("topsensorbad") != std::string::npos) {
+        err_desc = "Top Lid Sensor Fault";
+      } else if (event_str.find("igbtsensorbad") != std::string::npos) {
+        err_desc = "IGBT Sensor Fault";
+      } else if (event_str.find("botsensorhigh") != std::string::npos) {
+        err_desc = "Bottom Overheat";
+      } else if (event_str.find("topsensorhigh") != std::string::npos) {
+        err_desc = "Top Lid Overheat";
+      } else if (event_str.find("igbtsensorhigh") != std::string::npos) {
+        err_desc = "IGBT Overheat";
+      } else if (event_str.find("hvprotection") != std::string::npos) {
+        err_desc = "High Voltage Protection";
+      } else if (event_str.find("lvprotection") != std::string::npos) {
+        err_desc = "Low Voltage Protection";
+      } else if (event_str.find("wirebroken") != std::string::npos) {
+        err_desc = "Sensor/Coil Wire Broken";
+      } else {
+        err_desc = event_str;
+      }
+      this->error_text_sensor_->publish_state(err_desc);
     }
   }
 }

@@ -64,6 +64,8 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   void set_raw_status_text_sensor(text_sensor::TextSensor *s) { this->raw_status_text_sensor_ = s; }
   void set_hardware_version_text_sensor(text_sensor::TextSensor *s) { this->hardware_version_text_sensor_ = s; }
   void set_mcu_version_text_sensor(text_sensor::TextSensor *s) { this->mcu_version_text_sensor_ = s; }
+  void set_error_text_sensor(text_sensor::TextSensor *s) { this->error_text_sensor_ = s; }
+  void set_favorite_text_sensor(text_sensor::TextSensor *s) { this->favorite_text_sensor_ = s; }
 
   // Binary Sensor Setters
   void set_pot_present_binary_sensor(binary_sensor::BinarySensor *s) { this->pot_present_binary_sensor_ = s; }
@@ -84,6 +86,10 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   void select_menu_by_name(const std::string &name);
   void start_selected_menu();
   void set_interaction(const std::string &settings, uint8_t led_sec, uint8_t lid_sec, uint8_t alarm_sec);
+  void set_led_timeout(uint8_t sec);
+  void set_lid_warning_timeout(uint8_t sec);
+  void set_alarm_delay(uint8_t sec);
+  void start_favorite();
   void send_raw_command(const std::string &cmd);
   void request_temp_history();
   void set_network_state(const std::string &state);
@@ -103,6 +109,13 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   std::string last_stage_;
   float last_remaining_{-1.0f};
 
+  // Interaction & Settings tracking
+  std::string current_settings_{"0607"};
+  uint8_t current_led_sec_{5};
+  uint8_t current_lid_sec_{4};
+  uint8_t current_alarm_sec_{21};
+  std::string favorite_raw_{""};
+
   // Sensors
   sensor::Sensor *temperature_sensor_{nullptr};
   sensor::Sensor *remaining_time_sensor_{nullptr};
@@ -115,6 +128,8 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   text_sensor::TextSensor *menu_text_sensor_{nullptr};
   text_sensor::TextSensor *last_button_text_sensor_{nullptr};
   text_sensor::TextSensor *last_event_text_sensor_{nullptr};
+  text_sensor::TextSensor *error_text_sensor_{nullptr};
+  text_sensor::TextSensor *favorite_text_sensor_{nullptr};
   text_sensor::TextSensor *raw_status_text_sensor_{nullptr};
   text_sensor::TextSensor *hardware_version_text_sensor_{nullptr};
   text_sensor::TextSensor *mcu_version_text_sensor_{nullptr};
@@ -273,6 +288,16 @@ class StartSelectedMenuButton : public button::Button, public Component {
   ChunmiCooker *parent_{nullptr};
 };
 
+class StartFavoriteButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) this->parent_->start_favorite();
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
 // Automations & Actions
 template<typename... Ts> class StartAction : public Action<Ts...> {
  public:
@@ -312,6 +337,25 @@ template<typename... Ts> class SendRawAction : public Action<Ts...> {
   TEMPLATABLE_VALUE(std::string, command)
   void play(Ts... x) override {
     this->parent_->send_raw_command(this->command_.value(x...));
+  }
+ protected:
+  ChunmiCooker *parent_;
+};
+
+template<typename... Ts> class SetInteractionAction : public Action<Ts...> {
+ public:
+  SetInteractionAction(ChunmiCooker *parent) : parent_(parent) {}
+  TEMPLATABLE_VALUE(std::string, settings)
+  TEMPLATABLE_VALUE(uint8_t, led_sec)
+  TEMPLATABLE_VALUE(uint8_t, lid_sec)
+  TEMPLATABLE_VALUE(uint8_t, alarm_sec)
+  void play(Ts... x) override {
+    this->parent_->set_interaction(
+      this->settings_.value(x...),
+      this->led_sec_.value(x...),
+      this->lid_sec_.value(x...),
+      this->alarm_sec_.value(x...)
+    );
   }
  protected:
   ChunmiCooker *parent_;

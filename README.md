@@ -18,7 +18,16 @@ Detailed technical documentation is available under [`documentation/`](documenta
 - [Hardware & Pinout Reference](documentation/hardware-and-pinout.md) — Silicon identification, pinouts for headers (UART1, UART2, Flash port, JW), and bench power setup.
 - [Serial Protocol Specification](documentation/serial-protocol.md) — Line-based 115200 8N1 protocol, downlink commands, 12-element status array schema, async event codes, and command queue architecture.
 - [Firmware Analysis & Flash Layout](documentation/firmware-analysis.md) — 2MB SPI flash geometry, bootloader, user1 miIO binary, embedded NXP LPC11xx MCU binary, and OTA mechanism.
-- [ESPHome Implementation Architecture](documentation/esphome-architecture.md) — Custom `chunmi_cooker` external component design, C++ classes, and Home Assistant entity models.
+- [ESPHome Implementation Architecture](documentation/esphome-architecture.md) — Custom `chunmi_cooker` external component design, C++ classes, Home Assistant entity models, and native API services.
+
+## Home Assistant Integration
+
+The firmware exposes full telemetry and control directly to Home Assistant without cloud dependencies:
+
+* **Control & Presets**: Menu selector, cycle stop/cancel, and one-touch start buttons for Quick Rice, Standard Rice, Porridge, Keep Warm, Cooking/Steam, Cake, Stored Favorite, Sushi Rice (Experimental), and 30-minute Express Rice (Experimental).
+* **Telemetry**: Real-time mode, cooking phase/stage, countdown timer, ambient/cooking temperature, pot interlock detection, auto keep-warm toggle, and stored favorite profile.
+* **Safety & Diagnostics**: Dedicated error text sensor (`sensor.error_description`) with granular hardware fault descriptions, last lid button pressed, and hardware/firmware revision info.
+* **Native API Actions / Services**: Call actions from Home Assistant automations or Developer Tools (`set_interaction`, `set_led_timeout`, `set_lid_warning_timeout`, `set_alarm_delay`, `send_raw_command`). See [Architecture Reference](documentation/esphome-architecture.md#41-home-assistant-native-api-services--actions) for parameters and syntax.
 
 ## Quickstart
 
