@@ -744,6 +744,23 @@ wheels = [
 ]
 
 [[package]]
+name = "esphome-xiaomi-rice-cooker"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "esphome" },
+    { name = "esptool" },
+    { name = "pyserial" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "esphome" },
+    { name = "esptool" },
+    { name = "pyserial" },
+]
+
+[[package]]
 name = "esptool"
 version = "5.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1585,23 +1602,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/af/28e4758e087c6d3a3e691ecd67fd1304074b9bca4b5f1563ab6d1336a6a4/resvg_py-0.5.0-cp315-abi3.abi3t-win32.whl", hash = "sha256:f0c834262db96eac4d5767e1025c21efefa0ed0359bded8dfd4b79fc7549694f", size = 1204143, upload-time = "2026-08-24T19:43:09.706Z" },
     { url = "https://files.pythonhosted.org/packages/73/5c/5b0e68ce15bd87eaee64501427437f57bece008e15bf40dd759563f0038a/resvg_py-0.5.0-cp315-abi3.abi3t-win_amd64.whl", hash = "sha256:011111a4c3f46d409e989fe88ec783a3ffae1f3877092ab0351aaf2167fe399d", size = 1240349, upload-time = "2026-08-24T19:43:11.397Z" },
     { url = "https://files.pythonhosted.org/packages/62/e6/25b6616cebbce1412bb5fe8b037545f382b4da875bc614a97ff1ecd7aa28/resvg_py-0.5.0-cp315-abi3.abi3t-win_arm64.whl", hash = "sha256:66e5a7699f2b00024ed7e95ec53df05bb3da277ee5bc86f867d487e310e4d392", size = 1152399, upload-time = "2026-08-24T19:43:12.618Z" },
-]
-
-[[package]]
-name = "rice-cooker-firmware"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "esphome" },
-    { name = "esptool" },
-    { name = "pyserial" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "esphome" },
-    { name = "esptool" },
-    { name = "pyserial" },
 ]
 
 [[package]]

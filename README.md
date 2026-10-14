@@ -1,4 +1,4 @@
-# Rice Cooker Firmware
+# ESPHome Xiaomi Rice Cooker (IHFB01CM)
 
 Alternative strictly-local firmware for the Xiaomi IH Rice Cooker
 (`IHFB01CM`, miIO `chunmi.cooker.normal2`).

@@ -1,5 +1,5 @@
 [project]
-name = "rice-cooker-firmware"
+name = "esphome-xiaomi-rice-cooker"
 version = "0.1.0"
 description = "Alternative local ESPHome firmware for the Xiaomi IH Rice Cooker (IHFB01CM)"
 readme = "README.md"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rice-cooker-firmware = "rice_cooker_firmware:main"
+esphome-xiaomi-rice-cooker = "esphome_xiaomi_rice_cooker:main"
 
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
