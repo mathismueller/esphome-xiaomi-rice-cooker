@@ -12,16 +12,17 @@ esp8266:
 
 logger:
   hardware_uart: UART1
-  baud_rate: 115200  # Outputs on GPIO2 (routed to UART2 header TX)
+  baud_rate: 115200 # Outputs on GPIO2 (routed to UART2 header TX)
 
 ota:
   - platform: esphome
+    encryption: # uses the same encryption as the HA API
     on_begin:
       - lambda: |-
           id(my_cooker).set_network_state("updating");
 
 external_components:
-  - source: components
+  - source: components # local folder
 
 uart:
   id: cooker_uart
@@ -34,77 +35,105 @@ chunmi_cooker:
   uart_id: cooker_uart
   update_interval: 3s
 
-sensor:
-  - platform: chunmi_cooker
-    temperature:
-      name: "Cooker Temperature"
-    remaining_time:
-      name: "Cooker Remaining Time"
-    duration:
-      name: "Cooker Program Duration"
-    delay_time:
-      name: "Cooker Delay Time"
-
-text_sensor:
-  - platform: chunmi_cooker
-    mode:
-      name: "Cooker Mode"
-    stage:
-      name: "Cooker Stage"
-    menu:
-      name: "Cooker Menu"
-    last_button:
-      name: "Cooker Last Button"
-    last_event:
-      name: "Cooker Last Event"
-    hardware_version:
-      name: "Cooker Hardware Version"
-    mcu_version:
-      name: "Cooker MCU Version"
-
-binary_sensor:
-  - platform: chunmi_cooker
-    pot_present:
-      name: "Inner Pot Present"
-    error:
-      name: "Cooker Error"
-    auto_keep_warm:
-      name: "Cooker Auto Keep Warm"
-    lid_open_warning:
-      name: "Cooker Lid Open Warning"
-
+# ==============================================================================
+# Controls & Program Selection
+# ==============================================================================
 select:
   - platform: chunmi_cooker
     menu_select:
-      name: "Cooker Menu Select"
+      name: "Menu Select"
 
 button:
   - platform: chunmi_cooker
-    cancel:
-      name: "Cooker Cancel / Stop"
-    acknowledge:
-      name: "Cooker Acknowledge"
-    mute:
-      name: "Cooker Mute Warnings"
-    refresh:
-      name: "Cooker Refresh Status"
+    # --- Primary Menu & Cycle Controls ---
     start_selected_menu:
-      name: "Cooker Start Selected Menu"
+      name: "Start Selected Menu"
+    cancel:
+      name: "Cancel - Stop"
+
+    # --- Quick Start Presets ---
     start_quick_rice:
-      name: "Cooker Start Quick Rice"
+      name: "Start Quick Rice"
     start_standard_rice:
-      name: "Cooker Start Standard Rice"
+      name: "Start Standard Rice"
     start_porridge:
-      name: "Cooker Start Porridge"
+      name: "Start Porridge"
     start_keep_warm:
-      name: "Cooker Start Keep Warm"
+      name: "Start Keep Warm"
     start_cooking:
-      name: "Cooker Start Cooking"
+      name: "Start Cooking"
     start_cake:
-      name: "Cooker Start Cake"
+      name: "Start Cake"
+
+    # --- Secondary Controls & Configuration ---
+    acknowledge:
+      name: "Acknowledge"
+      entity_category: config
+    mute:
+      name: "Mute Warnings"
+      entity_category: config
+    refresh:
+      name: "Refresh Status"
+      entity_category: diagnostic
+
+# ==============================================================================
+# Status, Telemetry & Sensors
+# ==============================================================================
+sensor:
+  - platform: chunmi_cooker
+    # --- Primary Cooking Progress ---
+    remaining_time:
+      name: "Remaining Time"
+
+    # --- Operating Sensors & Cycle Metrics ---
+    temperature:
+      name: "Temperature"
+    duration:
+      name: "Program Duration"
+    delay_time:
+      name: "Delay Time"
+
+text_sensor:
+  - platform: chunmi_cooker
+    # --- Primary Active Status ---
+    mode:
+      name: "Mode"
+    stage:
+      name: "Stage"
+    menu:
+      name: "Menu"
+
+    # --- Internal & Diagnostics ---
+    last_button:
+      name: "Last Button"
+      entity_category: diagnostic
+    last_event:
+      name: "Last Event"
+      entity_category: diagnostic
+    hardware_version:
+      name: "Hardware Version"
+      entity_category: diagnostic
+    mcu_version:
+      name: "MCU Version"
+      entity_category: diagnostic
+
+binary_sensor:
+  - platform: chunmi_cooker
+    # --- Operating Status & Sensors ---
+    auto_keep_warm:
+      name: "Auto Keep Warm"
+    lid_open_warning:
+      name: "Lid Open Warning"
+    # --- Hardware & Safety Sensors ---
+    pot_present:
+      name: "Inner Pot Present"
+    error:
+      name: "Error"
 
 # Home Assistant Native API
 api:
+  encryption:
+    key: !secret api_encryption_key
 
 # Wi-Fi configuration with LED status triggers and fallback AP
 wifi:
@@ -120,7 +149,5 @@ wifi:
     - lambda: |-
         id(my_cooker).set_network_state("offline");
 
+# Only shown during fallback
 captive_portal:
-
-web_server:
-  port: 80

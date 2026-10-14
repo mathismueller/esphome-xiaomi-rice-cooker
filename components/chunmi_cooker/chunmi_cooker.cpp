@@ -215,7 +215,11 @@ void ChunmiCooker::handle_line_(const std::string &line) {
     if (!this->command_queue_.empty()) {
       std::string cmd = this->command_queue_.front();
       this->command_queue_.pop();
-      ESP_LOGD(TAG, "Dispatching command: %s", cmd.c_str());
+      if (cmd.find("get_prop") != std::string::npos || cmd.find("get_temp_history") != std::string::npos) {
+        ESP_LOGV(TAG, "Dispatching poll command: %s", cmd.c_str());
+      } else {
+        ESP_LOGI(TAG, "Dispatching command: %s", cmd.c_str());
+      }
       this->write_str(cmd.c_str());
     } else {
       this->write_str("down none\r");
@@ -223,9 +227,10 @@ void ChunmiCooker::handle_line_(const std::string &line) {
     return;
   }
 
-  ESP_LOGD(TAG, "MCU RX: %s", line.c_str());
+  ESP_LOGV(TAG, "MCU RX: %s", line.c_str());
 
-  if (this->raw_status_text_sensor_ != nullptr) {
+  if (this->raw_status_text_sensor_ != nullptr &&
+      (!this->raw_status_text_sensor_->has_state() || this->raw_status_text_sensor_->state != line)) {
     this->raw_status_text_sensor_->publish_state(line);
   }
 
@@ -250,13 +255,15 @@ void ChunmiCooker::handle_line_(const std::string &line) {
             std::string last_byte = val.substr(val.length() - 2);
             int temp_c = strtol(last_byte.c_str(), nullptr, 16);
             if (temp_c > 0 && temp_c <= 150 && this->temperature_sensor_ != nullptr) {
-              ESP_LOGD(TAG, "Cooking temperature history update: %d°C", temp_c);
-              this->temperature_sensor_->publish_state(temp_c);
+              if (!this->temperature_sensor_->has_state() || this->temperature_sensor_->state != temp_c) {
+                ESP_LOGV(TAG, "Cooking temperature history update: %d°C", temp_c);
+                this->temperature_sensor_->publish_state(temp_c);
+              }
             }
           }
         }
       }
-      ESP_LOGD(TAG, "MCU Command Acknowledged: %s", line.c_str());
+      ESP_LOGV(TAG, "MCU Command Acknowledged: %s", line.c_str());
     }
   } else if (line.rfind("{\"result\":", 0) == 0 || line.rfind("{\"id\":", 0) == 0) {
     this->parse_json_result_(line);
@@ -343,7 +350,7 @@ static std::string decode_menu_name(const std::string &menu_hex) {
 }
 
 void ChunmiCooker::parse_json_result_(const std::string &json_str) {
-  StaticJsonDocument<1024> doc;
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, json_str);
   if (error) {
     ESP_LOGW(TAG, "Failed to parse JSON status: %s", error.c_str());
@@ -361,13 +368,17 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   if (func_str != nullptr) {
     std::string mode = func_str;
     this->is_running_ = (mode == "running");
-    if (this->mode_text_sensor_ != nullptr) {
+    if (this->mode_text_sensor_ != nullptr &&
+        (!this->mode_text_sensor_->has_state() || this->mode_text_sensor_->state != mode)) {
       this->mode_text_sensor_->publish_state(mode);
     }
-    if (this->error_binary_sensor_ != nullptr) {
-      this->error_binary_sensor_->publish_state(mode == "error");
+    bool is_err = (mode == "error");
+    if (this->error_binary_sensor_ != nullptr &&
+        (!this->error_binary_sensor_->has_state() || this->error_binary_sensor_->state != is_err)) {
+      this->error_binary_sensor_->publish_state(is_err);
     }
-    if (mode != "error" && this->pot_present_binary_sensor_ != nullptr) {
+    if (mode != "error" && this->pot_present_binary_sensor_ != nullptr &&
+        (!this->pot_present_binary_sensor_->has_state() || !this->pot_present_binary_sensor_->state)) {
       this->pot_present_binary_sensor_->publish_state(true);
     }
   }
@@ -376,10 +387,12 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   const char *menu_str = result[1];
   if (menu_str != nullptr) {
     std::string menu_name = decode_menu_name(menu_str);
-    if (this->menu_text_sensor_ != nullptr) {
+    if (this->menu_text_sensor_ != nullptr &&
+        (!this->menu_text_sensor_->has_state() || this->menu_text_sensor_->state != menu_name)) {
       this->menu_text_sensor_->publish_state(menu_name);
     }
-    if (this->menu_select_ != nullptr) {
+    if (this->menu_select_ != nullptr &&
+        (!this->menu_select_->has_state() || this->menu_select_->current_option() != menu_name)) {
       this->menu_select_->publish_state(menu_name);
     }
   }
@@ -387,7 +400,10 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   // Index 2: Cooking Stage
   const char *stage_str = result[2];
   if (stage_str != nullptr && this->stage_text_sensor_ != nullptr) {
-    this->stage_text_sensor_->publish_state(decode_stage_name(stage_str));
+    std::string stage_name = decode_stage_name(stage_str);
+    if (!this->stage_text_sensor_->has_state() || this->stage_text_sensor_->state != stage_name) {
+      this->stage_text_sensor_->publish_state(stage_name);
+    }
   }
 
   // Index 3: Temperature (ambient in °C when idle e.g. "22")
@@ -396,7 +412,9 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
     std::string t_str = temp_str;
     if (t_str.length() <= 3 && isdigit(t_str[0])) {
       float temp_val = strtof(t_str.c_str(), nullptr);
-      this->temperature_sensor_->publish_state(temp_val);
+      if (!this->temperature_sensor_->has_state() || this->temperature_sensor_->state != temp_val) {
+        this->temperature_sensor_->publish_state(temp_val);
+      }
     }
   }
 
@@ -404,7 +422,9 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   const char *t_func_str = result[4];
   if (t_func_str != nullptr && this->remaining_time_sensor_ != nullptr) {
     float rem_val = strtof(t_func_str, nullptr);
-    this->remaining_time_sensor_->publish_state(rem_val);
+    if (!this->remaining_time_sensor_->has_state() || this->remaining_time_sensor_->state != rem_val) {
+      this->remaining_time_sensor_->publish_state(rem_val);
+    }
   }
 
   // Index 5: Delay / Scheduled Start (t_precook)
@@ -412,7 +432,10 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
     const char *t_precook_str = result[5];
     if (t_precook_str != nullptr && this->delay_time_sensor_ != nullptr) {
       float delay_val = strtof(t_precook_str, nullptr);
-      this->delay_time_sensor_->publish_state(delay_val >= 0 ? delay_val : 0.0f);
+      float final_delay = delay_val >= 0 ? delay_val : 0.0f;
+      if (!this->delay_time_sensor_->has_state() || this->delay_time_sensor_->state != final_delay) {
+        this->delay_time_sensor_->publish_state(final_delay);
+      }
     }
   }
 
@@ -420,7 +443,9 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   const char *t_cook_str = result[6];
   if (t_cook_str != nullptr && this->duration_sensor_ != nullptr) {
     float dur_val = strtof(t_cook_str, nullptr);
-    this->duration_sensor_->publish_state(dur_val);
+    if (!this->duration_sensor_->has_state() || this->duration_sensor_->state != dur_val) {
+      this->duration_sensor_->publish_state(dur_val);
+    }
   }
 
   // Index 7: Settings bitmask (e.g. "0607")
@@ -429,11 +454,15 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
     if (setting_str != nullptr && strlen(setting_str) >= 2) {
       char b0_hex[3] = {setting_str[0], setting_str[1], '\0'};
       int b0 = strtol(b0_hex, nullptr, 16);
-      if (this->auto_keep_warm_binary_sensor_ != nullptr) {
-        this->auto_keep_warm_binary_sensor_->publish_state((b0 & 0x04) != 0);
+      bool akw = (b0 & 0x04) != 0;
+      bool low = (b0 & 0x08) != 0;
+      if (this->auto_keep_warm_binary_sensor_ != nullptr &&
+          (!this->auto_keep_warm_binary_sensor_->has_state() || this->auto_keep_warm_binary_sensor_->state != akw)) {
+        this->auto_keep_warm_binary_sensor_->publish_state(akw);
       }
-      if (this->lid_open_warning_binary_sensor_ != nullptr) {
-        this->lid_open_warning_binary_sensor_->publish_state((b0 & 0x08) != 0);
+      if (this->lid_open_warning_binary_sensor_ != nullptr &&
+          (!this->lid_open_warning_binary_sensor_->has_state() || this->lid_open_warning_binary_sensor_->state != low)) {
+        this->lid_open_warning_binary_sensor_->publish_state(low);
       }
     }
   }
@@ -449,20 +478,35 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
       if (this->hardware_version_text_sensor_ != nullptr) {
         char buf[16];
         snprintf(buf, sizeof(buf), "v%d", hw_ver);
-        this->hardware_version_text_sensor_->publish_state(buf);
+        if (!this->hardware_version_text_sensor_->has_state() || this->hardware_version_text_sensor_->state != buf) {
+          this->hardware_version_text_sensor_->publish_state(buf);
+        }
       }
       if (this->mcu_version_text_sensor_ != nullptr) {
         char buf[16];
         snprintf(buf, sizeof(buf), "v%d", fw_ver);
-        this->mcu_version_text_sensor_->publish_state(buf);
+        if (!this->mcu_version_text_sensor_->has_state() || this->mcu_version_text_sensor_->state != buf) {
+          this->mcu_version_text_sensor_->publish_state(buf);
+        }
       }
     }
   }
 
-  ESP_LOGI(TAG, "Cooker Status: Mode=%s, Temp=%s, Remaining=%s min",
-           func_str ? func_str : "null",
-           temp_str ? temp_str : "null",
-           t_func_str ? t_func_str : "null");
+  // Log only when core state transitions occur:
+  std::string cur_mode = func_str ? func_str : "null";
+  std::string cur_stage = stage_str ? decode_stage_name(stage_str) : "null";
+  float cur_remaining = t_func_str ? strtof(t_func_str, nullptr) : -1.0f;
+
+  if (cur_mode != this->last_mode_ || cur_stage != this->last_stage_ || cur_remaining != this->last_remaining_) {
+    ESP_LOGI(TAG, "Cooker Status: Mode=%s, Stage=%s, Remaining=%.0f min",
+             cur_mode.c_str(), cur_stage.c_str(), cur_remaining);
+    this->last_mode_ = cur_mode;
+    this->last_stage_ = cur_stage;
+    this->last_remaining_ = cur_remaining;
+  } else {
+    ESP_LOGV(TAG, "Cooker Status (polling): Mode=%s, Temp=%s, Remaining=%.0f min",
+             cur_mode.c_str(), temp_str ? temp_str : "null", cur_remaining);
+  }
 }
 
 void ChunmiCooker::handle_event_(const std::string &event_str) {

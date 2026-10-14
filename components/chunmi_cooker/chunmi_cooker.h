@@ -93,6 +93,9 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   std::queue<std::string> command_queue_;
   bool handshake_done_{false};
   bool is_running_{false};
+  std::string last_mode_;
+  std::string last_stage_;
+  float last_remaining_{-1.0f};
 
   // Sensors
   sensor::Sensor *temperature_sensor_{nullptr};

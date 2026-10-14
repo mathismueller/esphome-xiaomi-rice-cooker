@@ -48,6 +48,7 @@ SendRawAction = chunmi_cooker_ns.class_("SendRawAction", automation.Action)
         },
         key="profile",
     ),
+    synchronous=True,
 )
 async def start_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -67,6 +68,7 @@ async def start_to_code(config, action_id, template_arg, args):
         },
         key="profile",
     ),
+    synchronous=True,
 )
 async def set_menu_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -84,6 +86,7 @@ async def set_menu_to_code(config, action_id, template_arg, args):
             cv.GenerateID(): cv.use_id(ChunmiCooker),
         }
     ),
+    synchronous=True,
 )
 async def cancel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -100,6 +103,7 @@ async def cancel_to_code(config, action_id, template_arg, args):
         },
         key="command",
     ),
+    synchronous=True,
 )
 async def send_raw_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
