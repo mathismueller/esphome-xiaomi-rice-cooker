@@ -54,3 +54,13 @@ See `research/2026-09-25 feasibility.md` for the full bench procedure
 - `scripts/` — bench helpers.
 - `src/` — Python package scaffold.
 - `tmp/` — captures, dumps, scratch (git-ignored, never committed).
+
+## Disclaimer
+
+This is an independent community reverse-engineering project and is not affiliated with, endorsed by, or associated with Xiaomi Inc., Mijia, Chunmi, or their subsidiaries. All product names, trademarks, and registered trademarks are the property of their respective owners.
+
+This firmware and documentation are provided "as is", without warranty of any kind. Working on appliances that connect to AC mains electricity carries inherent risks of electric shock, fire, or burns. Always disconnect the cooker completely from AC mains power before servicing or flashing the low-voltage logic board.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

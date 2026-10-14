@@ -1,8 +1,9 @@
 [project]
 name = "rice-cooker-firmware"
 version = "0.1.0"
-description = "Add your description here"
+description = "Alternative local ESPHome firmware for the Xiaomi IH Rice Cooker (IHFB01CM)"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Mathis Müller", email = "hello@mathismueller.eu" }
 ]
