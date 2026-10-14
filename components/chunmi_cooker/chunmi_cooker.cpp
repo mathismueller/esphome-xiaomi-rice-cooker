@@ -86,6 +86,10 @@ void ChunmiCooker::select_menu_by_name(const std::string &name) {
     this->set_menu_profile(profiles::COOKING);
   } else if (name == "Cake") {
     this->set_menu_profile(profiles::CAKE);
+  } else if (name == "Sushi Rice" || name == "Sushi Rice (Experimental)") {
+    this->set_menu_profile(profiles::SUSHI_RICE);
+  } else if (name == "Express Rice" || name == "Express Rice (Experimental)") {
+    this->set_menu_profile(profiles::EXPRESS_RICE);
   } else {
     ESP_LOGW(TAG, "Unknown menu name: %s", name.c_str());
   }
@@ -109,6 +113,10 @@ void ChunmiCooker::start_selected_menu() {
     this->start_profile(profiles::COOKING);
   } else if (current_menu == "Cake") {
     this->start_profile(profiles::CAKE);
+  } else if (current_menu == "Sushi Rice" || current_menu == "Sushi Rice (Experimental)") {
+    this->start_profile(profiles::SUSHI_RICE);
+  } else if (current_menu == "Express Rice" || current_menu == "Express Rice (Experimental)") {
+    this->start_profile(profiles::EXPRESS_RICE);
   } else {
     this->start_profile(profiles::KUAIZHU);
   }
@@ -346,6 +354,8 @@ static std::string decode_menu_name(const std::string &menu_hex) {
   if (menu_hex == "0102") return "Reheat Rice";
   if (menu_hex == "0103") return "Cooking / Steam";
   if (menu_hex == "0104") return "Sweet Rice";
+  if (menu_hex == "0105") return "Sushi Rice (Experimental)";
+  if (menu_hex == "0106") return "Express Rice (Experimental)";
   return "Custom (" + menu_hex + ")";
 }
 

@@ -30,6 +30,8 @@ async def to_code(config):
                 "Keep Warm",
                 "Cooking / Steam",
                 "Cake",
+                "Sushi Rice (Experimental)",
+                "Express Rice (Experimental)",
             ],
         )
         await cg.register_component(sel, config[CONF_MENU_SELECT])

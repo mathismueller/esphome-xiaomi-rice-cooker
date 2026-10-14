@@ -117,6 +117,8 @@ classDiagram
 | **Control** | Start Keep Warm | `button` | Sends `down set_start "<profile>"\r` | Starts Keep Warm |
 | **Control** | Start Cooking | `button` | Sends `down set_start "<profile>"\r` | Starts Steaming / Cooking |
 | **Control** | Start Cake | `button` | Sends `down set_start "<profile>"\r` | Starts Cake baking |
+| **Control** | Start Sushi Rice (Experimental) | `button` | Sends `down set_start "<profile>"\r` | Starts 50-min Sushi Rice profile |
+| **Control** | Start Express Rice (Experimental) | `button` | Sends `down set_start "<profile>"\r` | Starts 30-min Express Rice profile |
 | **Control** | Acknowledge | `button` | Sends `down set_func "ack"\r` | Acknowledges active warning chime |
 | **Control** | Mute Warnings | `button` | Sends `down set_func "nowarn"\r` | Suppresses recurring reminder beeps |
 | **Control / Diagnostic** | Refresh Status | `button` | Sends `down get_prop "all"\r` | Triggers immediate status refresh |
@@ -125,7 +127,7 @@ classDiagram
 Entities are structured via native ESPHome/Home Assistant `entity_category` tags to ensure clean separation on device pages and dashboards:
 1. **Primary Controls & Actions** (Default category, rendered at top):
    - Menu Select (`select.menu_select`), Start Selected Menu, Cancel - Stop.
-   - Quick Start Presets (Quick Rice, Standard Rice, Porridge, Keep Warm, Cooking, Cake).
+   - Quick Start Presets (Quick Rice, Standard Rice, Porridge, Keep Warm, Cooking, Cake, Sushi Rice [Experimental], Express Rice [Experimental]).
 2. **Primary Status & Cooking Telemetry** (Default category, rendered under Sensors):
    - Remaining Time, Mode, Stage, Menu.
    - Temperature, Inner Pot Present, Auto Keep Warm, Lid Open Warning, Program Duration, Delay Time, Error.

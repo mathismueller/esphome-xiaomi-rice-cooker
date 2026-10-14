@@ -14,6 +14,8 @@ StartPorridgeButton = chunmi_cooker_ns.class_("StartPorridgeButton", button.Butt
 StartKeepWarmButton = chunmi_cooker_ns.class_("StartKeepWarmButton", button.Button, cg.Component)
 StartCookingButton = chunmi_cooker_ns.class_("StartCookingButton", button.Button, cg.Component)
 StartCakeButton = chunmi_cooker_ns.class_("StartCakeButton", button.Button, cg.Component)
+StartSushiRiceButton = chunmi_cooker_ns.class_("StartSushiRiceButton", button.Button, cg.Component)
+StartExpressRiceButton = chunmi_cooker_ns.class_("StartExpressRiceButton", button.Button, cg.Component)
 StartSelectedMenuButton = chunmi_cooker_ns.class_("StartSelectedMenuButton", button.Button, cg.Component)
 
 CONF_CANCEL = "cancel"
@@ -27,6 +29,8 @@ CONF_START_PORRIDGE = "start_porridge"
 CONF_START_KEEP_WARM = "start_keep_warm"
 CONF_START_COOKING = "start_cooking"
 CONF_START_CAKE = "start_cake"
+CONF_START_SUSHI_RICE = "start_sushi_rice"
+CONF_START_EXPRESS_RICE = "start_express_rice"
 CONF_START_SELECTED_MENU = "start_selected_menu"
 
 CONFIG_SCHEMA = cv.Schema(
@@ -76,6 +80,14 @@ CONFIG_SCHEMA = cv.Schema(
             StartCakeButton,
             icon="mdi:cake-variant",
         ),
+        cv.Optional(CONF_START_SUSHI_RICE): button.button_schema(
+            StartSushiRiceButton,
+            icon="mdi:rice",
+        ),
+        cv.Optional(CONF_START_EXPRESS_RICE): button.button_schema(
+            StartExpressRiceButton,
+            icon="mdi:flash-outline",
+        ),
     }
 )
 
@@ -94,6 +106,8 @@ async def to_code(config):
         (CONF_START_KEEP_WARM, StartKeepWarmButton),
         (CONF_START_COOKING, StartCookingButton),
         (CONF_START_CAKE, StartCakeButton),
+        (CONF_START_SUSHI_RICE, StartSushiRiceButton),
+        (CONF_START_EXPRESS_RICE, StartExpressRiceButton),
     ]
 
     for conf_key, _ in button_configs:

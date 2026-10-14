@@ -34,6 +34,12 @@ static const char *const CAKE =
 
 static const char *const COOKING =
     "010366001E0100000A010540000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000280A003C001E9155730E0000008278736E001000756E00690A0075826E006910FF756E6E0869100069005A00000000000000F462";
+
+static const char *const SUSHI_RICE =
+    "0105E100320000000002800200780069030103730000085A020000B4006B040103740000095A04000140006E0501037400000A5A0401FFFF00700601047600000C5A040103840A0F3C0A1E91FF820E01FF05FF78826EFF10FF786E02690F0DFF826EFF691000FF826EFF69100069FF5AFF000000000000FB8B";
+
+static const char *const EXPRESS_RICE =
+    "0106E1001E00000000018002005A0069030103730000075A02000078006B040103740000075A0200012C006E050103740000095A0401FFFF0070060104760000095A040101680A0F3C0A1E91FF820E01FF05FF78826EFF10FF786E02690F0DFF826EFF691000FF826EFF69100069FF5AFF00000000000021A8";
 }  // namespace profiles
 
 class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
@@ -233,6 +239,26 @@ class StartCakeButton : public button::Button, public Component {
  protected:
   void press_action() override {
     if (this->parent_ != nullptr) this->parent_->start_profile(profiles::CAKE);
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
+class StartSushiRiceButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) this->parent_->start_profile(profiles::SUSHI_RICE);
+  }
+  ChunmiCooker *parent_{nullptr};
+};
+
+class StartExpressRiceButton : public button::Button, public Component {
+ public:
+  void set_parent(ChunmiCooker *parent) { this->parent_ = parent; }
+ protected:
+  void press_action() override {
+    if (this->parent_ != nullptr) this->parent_->start_profile(profiles::EXPRESS_RICE);
   }
   ChunmiCooker *parent_{nullptr};
 };

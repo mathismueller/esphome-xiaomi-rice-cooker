@@ -64,6 +64,10 @@ button:
       name: "Start Cooking"
     start_cake:
       name: "Start Cake"
+    start_sushi_rice:
+      name: "Start Sushi Rice (Experimental)"
+    start_express_rice:
+      name: "Start Express Rice (Experimental)"
 
     # --- Secondary Controls & Configuration ---
     acknowledge:
