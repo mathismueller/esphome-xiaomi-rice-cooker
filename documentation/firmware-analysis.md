@@ -1,6 +1,6 @@
 # Firmware Analysis & Flash Dump Reverse Engineering
 
-This document documents the disassembly and analysis of the 2 MByte flash memory dump (`dumps/stock_backup_2MB.bin`) extracted from the **Xiaomi MHCW03P** module on the Xiaomi IH Rice Cooker (`IHFB01CM`).
+This document documents the disassembly and analysis of the 2 MByte flash memory dump ([`dumps/stock_esp8285_full_flash_2mb.bin`](../dumps/stock_esp8285_full_flash_2mb.bin)) extracted from the **Xiaomi MHCW03P** module on the Xiaomi IH Rice Cooker (`IHFB01CM`).
 
 ---
 
@@ -103,9 +103,9 @@ At offset `0x1FC000` (the 4th sector from the end of the 2MB flash), Espressif s
 ### 5.2 Preservation During Flashing
 - Standard ESPHome flashing writes `.esphome/.../firmware.bin` from `0x000000` to `~0x062000` (~400 KB).
 - **Because the binary is under 1MB, it never writes to or erases sector `0x1FC000`**. The factory RF calibration remains untouched.
-- If the flash is ever completely erased (`esptool erase-flash`), the extracted RF calibration file stored at [`dumps/esp_init_data_2MB.bin`](../dumps/esp_init_data_2MB.bin) must be restored:
+- If the flash is ever completely erased (`esptool erase-flash`), the extracted RF calibration file stored at [`dumps/stock_esp8285_rf_calibration_data.bin`](../dumps/stock_esp8285_rf_calibration_data.bin) must be restored:
   ```sh
-  esptool write-flash 0x1fc000 dumps/esp_init_data_2MB.bin
+  esptool write-flash 0x1fc000 dumps/stock_esp8285_rf_calibration_data.bin
   ```
 
 ---
