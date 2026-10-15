@@ -10,6 +10,15 @@ Replaces the original firmware on the MHCW03P Wi-Fi module (ESP8285) with ESPHom
 - Appliance controller MCU (NXP LPC1100 ARM Cortex-M0) autonomously enforces all thermal safety margins, induction inverter drive, and pot detection loops.
 - Heater base stays **unplugged from mains** during bench flashing. Use an external 5V bench supply for the main logic board, preferably with OCP.
 
+## Disclaimer
+
+This is an independent community reverse-engineering project and is not affiliated with, endorsed by, or associated with Xiaomi Inc., Mijia, Chunmi, or their subsidiaries. All product names, trademarks, and registered trademarks are the property of their respective owners.
+
+This firmware and documentation are provided "as is", without warranty of any kind. 
+
+Working on appliances that connect to AC mains electricity carries inherent risks of electric shock, fire, or burns. Always disconnect the cooker completely from AC mains power before servicing or flashing the low-voltage logic board.
+
+This project heavily relied on agentic coding tools to analyze the original firmware, reverse engineer the serial protocol, and implement a custom ESPHome component that speaks the same protocol to the cooker MCU.
 
 
 ## Usage in Your Local ESPHome Config
@@ -37,7 +46,7 @@ api:
     key: !secret api_encryption_key
 ```
 
-## Quickstart and Flashing
+## Flashing and Development
 
 To build and flash locally using the repository's development configuration [`dev.yaml`](dev.yaml):
 
@@ -47,7 +56,7 @@ uv run esphome compile dev.yaml       # compile firmware
 uv run esphome upload --device <IP> dev.yaml # OTA flash
 ```
 
-If you do not intent to clone the repository, you can also use the pre-built package directly in your own ESPHome config (see [`example.yaml`](example.yaml)).
+If you do not intent to clone the repository, you can also use the pre-built package directly in your own ESPHome config (see previous section).
 
 ![Xiaomi Rice Cooker Main Logic Board (CMIHFKACO2)](images/main-logic-board.jpeg)
 
@@ -103,15 +112,6 @@ The firmware exposes full telemetry and control directly to Home Assistant witho
 - **[python-miio](https://github.com/rytilahti/python-miio)** — Teemu Rytilahti and contributors for the `miiocli` tool suite that made it possible to initially probe the appliance over the local network, determine the miIO model (`chunmi.cooker.normal2`), and identify the underlying ESP8266/ESP8285 SoC.
 - **[MiEcosystem/miio_open](https://github.com/MiEcosystem/miio_open/tree/master/wifi/)** — Xiaomi's open IoT documentation for providing the hardware pinouts and UART specifications for the MHCW03P Wi-Fi module.
 - **[aquarat's Xiaomi Precision Induction Cooker Teardown](https://aquarat.co.uk/2021/04/05/xiaomi-precision-induction-cooker-teardown/)** — Aaron ([@aquarat](https://github.com/aquarat)) for the detailed teardown of the related cooker using the same MHCW03P module, which provided the vital lead linking to the `miio_open` pinout repository.
-
-## Disclaimer
-
-This is an independent community reverse-engineering project and is not affiliated with, endorsed by, or associated with Xiaomi Inc., Mijia, Chunmi, or their subsidiaries. All product names, trademarks, and registered trademarks are the property of their respective owners.
-
-This firmware and documentation are provided "as is", without warranty of any kind. 
-
-Working on appliances that connect to AC mains electricity carries inherent risks of electric shock, fire, or burns. Always disconnect the cooker completely from AC mains power before servicing or flashing the low-voltage logic board.
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
