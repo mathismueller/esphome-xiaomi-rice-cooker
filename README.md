@@ -3,13 +3,14 @@
 Alternative strictly-local firmware for the Xiaomi IH Rice Cooker
 (`IHFB01CM`, miIO `chunmi.cooker.normal2`).
 
-
 Replaces the original firmware on the MHCW03P Wi-Fi module (ESP8285) with ESPHome that speaks the stock UART dialogue to the cooker's own host MCU. Heater control, thermal protection, display, buttons, and buzzer all stay stock. Only low-voltage lid-board systems are ever accessed. No mains power is ever switched by the ESP module.
 
 ## Safety
 
 - Appliance controller MCU (NXP LPC1100 ARM Cortex-M0) autonomously enforces all thermal safety margins, induction inverter drive, and pot detection loops.
 - Heater base stays **unplugged from mains** during bench flashing. Use an external 5V bench supply for the main logic board, preferably with OCP.
+
+
 
 ## Usage in Your Local ESPHome Config
 
@@ -36,7 +37,7 @@ api:
     key: !secret api_encryption_key
 ```
 
-## Quickstart (Development)
+## Quickstart and Flashing
 
 To build and flash locally using the repository's development configuration [`dev.yaml`](dev.yaml):
 
@@ -46,7 +47,20 @@ uv run esphome compile dev.yaml       # compile firmware
 uv run esphome upload --device <IP> dev.yaml # OTA flash
 ```
 
-See [Bench Feasibility & Flashing Guide](research/2026-09-25%20feasibility.md) for the full bench procedure (wiring, safety checklist, the three UART headers, expected signatures).
+If you do not intent to clone the repository, you can also use the pre-built package directly in your own ESPHome config (see [`example.yaml`](example.yaml)).
+
+![Xiaomi Rice Cooker Main Logic Board (CMIHFKACO2)](images/main-logic-board.jpeg)
+
+Quick flashing guide: 
+1. Remove the lid cover, starting from the hinge with a lot of those plectrum-like tools. The clips should not fight back too much (see the `images/` folder for close ups).
+2. Take apart the two halves of the cover (there are lots of screws) to access the main logic board. You want to undo the cable guides. This step is rather self-explanatory.
+3. Take off the main logic board by undoing three screws and the two clips. You can then turn it over and put away the top half of the cover. 
+4. Solder in four places: 5V and GND on the bottom for power, GND on one of the UART headers and TX/RX on the two holes on the left side of the WiFi module. Last, add headers to the JW connector.
+5. Add a bench power supply to the 5V and GND pads. Make sure the supply is off before connecting.
+6. Connect a USB-to-UART adapter to the UART header (GND, TX, RX). Make sure the adapter is set to 3.3V logic level. The top hole is U0RXD / GPIO_3 ant he bottom is U0TXD / GPIO_1 when the board is oriented with the WiFi module on the right side.
+7. Bridge the JW connector with a jumper to put the device in flash mode (bridges GND to GPIO0), turn on the PSU and start the flashing process. I would recommend performing a firmware dump prior to flashing with esptool (the command should be in the documentation).
+
+See [Bench Feasibility & Flashing Guide](research/2026-09-25%20feasibility.md) for the full bench procedure. 
 
 ## Documentation
 
@@ -87,7 +101,7 @@ The firmware exposes full telemetry and control directly to Home Assistant witho
 - **[ESPHome](https://esphome.io/)** — The outstanding open-source firmware framework.
 - **[daniel-dona/MFB120A-1](https://github.com/daniel-dona/MFB120A-1)** — Daniel Dona's ESP32-based custom firmware project for the Xiaomi MFB120A-1 rice cooker, which let me know that some cookers are ESP-based.
 - **[python-miio](https://github.com/rytilahti/python-miio)** — Teemu Rytilahti and contributors for the `miiocli` tool suite that made it possible to initially probe the appliance over the local network, determine the miIO model (`chunmi.cooker.normal2`), and identify the underlying ESP8266/ESP8285 SoC.
-- **[MiEcosystem/miio_open](https://github.com/MiEcosystem/miio_open/tree/master/wifi/MHCW03P)** — Xiaomi's open IoT documentation for providing the hardware pinouts and UART specifications for the MHCW03P Wi-Fi module.
+- **[MiEcosystem/miio_open](https://github.com/MiEcosystem/miio_open/tree/master/wifi/)** — Xiaomi's open IoT documentation for providing the hardware pinouts and UART specifications for the MHCW03P Wi-Fi module.
 - **[aquarat's Xiaomi Precision Induction Cooker Teardown](https://aquarat.co.uk/2021/04/05/xiaomi-precision-induction-cooker-teardown/)** — Aaron ([@aquarat](https://github.com/aquarat)) for the detailed teardown of the related cooker using the same MHCW03P module, which provided the vital lead linking to the `miio_open` pinout repository.
 
 ## Disclaimer
