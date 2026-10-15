@@ -9,14 +9,12 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-  "esphome",
-  "esptool",
-  "pyserial",
+  "esphome >= 2026.9.1",
 ]
 
-[project.scripts]
-esphome-xiaomi-rice-cooker = "esphome_xiaomi_rice_cooker:main"
+[dependency-groups]
+dev = [
+    "esptool>=5.3.1",
+    "pyserial>=3.5",
+]
 
-[build-system]
-requires = ["uv_build>=0.12.15,<0.13.0"]
-build-backend = "uv_build"
