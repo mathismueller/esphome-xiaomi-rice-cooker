@@ -71,7 +71,6 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   void set_pot_present_binary_sensor(binary_sensor::BinarySensor *s) { this->pot_present_binary_sensor_ = s; }
   void set_error_binary_sensor(binary_sensor::BinarySensor *s) { this->error_binary_sensor_ = s; }
   void set_auto_keep_warm_binary_sensor(binary_sensor::BinarySensor *s) { this->auto_keep_warm_binary_sensor_ = s; }
-  void set_lid_open_warning_binary_sensor(binary_sensor::BinarySensor *s) { this->lid_open_warning_binary_sensor_ = s; }
 
   // Select Setter
   void set_menu_select(select::Select *s) { this->menu_select_ = s; }
@@ -105,6 +104,7 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   std::queue<std::string> command_queue_;
   bool handshake_done_{false};
   bool is_running_{false};
+  uint8_t temp_history_counter_{4};
   std::string last_mode_;
   std::string last_stage_;
   float last_remaining_{-1.0f};
@@ -138,7 +138,6 @@ class ChunmiCooker : public PollingComponent, public uart::UARTDevice {
   binary_sensor::BinarySensor *pot_present_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *error_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *auto_keep_warm_binary_sensor_{nullptr};
-  binary_sensor::BinarySensor *lid_open_warning_binary_sensor_{nullptr};
 
   // Select
   select::Select *menu_select_{nullptr};

@@ -22,6 +22,7 @@ venv/
 
 # ESPHome / firmware build artifacts
 .esphome/
+.platformio/
 *.bin
 *.elf
 *.map

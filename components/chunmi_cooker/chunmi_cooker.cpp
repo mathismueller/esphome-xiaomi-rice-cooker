@@ -192,7 +192,7 @@ void ChunmiCooker::request_temp_history() {
 
 void ChunmiCooker::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Chunmi Cooker UART interface...");
-  this->rx_buffer_.reserve(256);
+  this->rx_buffer_.reserve(1024);
 
   if (this->pot_present_binary_sensor_ != nullptr) {
     this->pot_present_binary_sensor_->publish_state(true);
@@ -202,9 +202,6 @@ void ChunmiCooker::setup() {
   }
   if (this->auto_keep_warm_binary_sensor_ != nullptr) {
     this->auto_keep_warm_binary_sensor_->publish_state(true);
-  }
-  if (this->lid_open_warning_binary_sensor_ != nullptr) {
-    this->lid_open_warning_binary_sensor_->publish_state(false);
   }
   if (this->last_button_text_sensor_ != nullptr) {
     this->last_button_text_sensor_->publish_state("None");
@@ -238,13 +235,20 @@ void ChunmiCooker::dump_config() {
   LOG_BINARY_SENSOR("  ", "Pot Present Binary Sensor:", this->pot_present_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Error Binary Sensor:", this->error_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Auto Keep Warm Binary Sensor:", this->auto_keep_warm_binary_sensor_);
-  LOG_BINARY_SENSOR("  ", "Lid Open Warning Binary Sensor:", this->lid_open_warning_binary_sensor_);
 }
 
 void ChunmiCooker::update() {
   this->queue_command("down get_prop \"all\"\r");
   if (this->is_running_) {
-    this->queue_command("down get_temp_history\r");
+    this->temp_history_counter_++;
+    // Temperature history is recorded by the MCU every 10-15s.
+    // Poll every 12-15s (every 4th cycle when update_interval is 3s) to prevent UART flooding.
+    if (this->temp_history_counter_ >= 4) {
+      this->temp_history_counter_ = 0;
+      this->queue_command("down get_temp_history\r");
+    }
+  } else {
+    this->temp_history_counter_ = 4; // Ready to poll immediately on first running cycle
   }
 }
 
@@ -257,7 +261,7 @@ void ChunmiCooker::loop() {
         this->rx_buffer_.clear();
       }
     } else {
-      if (this->rx_buffer_.length() < 512) {
+      if (this->rx_buffer_.length() < 1024) {
         this->rx_buffer_.push_back(c);
       } else {
         ESP_LOGW(TAG, "UART RX buffer overflow, discarding: %s", this->rx_buffer_.c_str());
@@ -291,31 +295,60 @@ void ChunmiCooker::handle_line_(const std::string &line) {
     this->raw_status_text_sensor_->publish_state(line);
   }
 
-  if (line.rfind("result \"", 0) == 0) {
+  if (line.rfind("result \"", 0) == 0 || line.rfind("result ", 0) == 0) {
     if (line.find(',') != std::string::npos) {
-      std::string payload = line.substr(7);
+      size_t space_idx = line.find(' ');
+      std::string payload = line.substr(space_idx + 1);
       std::string json_str = "{\"result\":[" + payload + "]}";
       this->parse_json_result_(json_str);
     } else {
-      // Single scalar result, e.g. result "0" or result "161515..." (temperature history)
+      // Single scalar result or hex stream, e.g. result "0" or result "161515..." (temperature history)
       size_t first = line.find('"');
-      size_t last = line.rfind('"');
-      if (first != std::string::npos && last != std::string::npos && last > first) {
-        std::string val = line.substr(first + 1, last - first - 1);
-        if (val.length() >= 2 && val.length() % 2 == 0) {
-          bool is_hex = true;
-          for (char c : val) {
-            if (!isxdigit(c)) { is_hex = false; break; }
-          }
-          if (is_hex && val.length() > 2) {
-            // Temperature history hex stream: last 2 hex chars is current temp in °C
-            std::string last_byte = val.substr(val.length() - 2);
-            int temp_c = strtol(last_byte.c_str(), nullptr, 16);
-            if (temp_c > 0 && temp_c <= 150 && this->temperature_sensor_ != nullptr) {
-              if (!this->temperature_sensor_->has_state() || this->temperature_sensor_->state != temp_c) {
-                ESP_LOGV(TAG, "Cooking temperature history update: %d°C", temp_c);
+      std::string val;
+      if (first != std::string::npos) {
+        size_t last = line.rfind('"');
+        if (last != std::string::npos && last > first) {
+          val = line.substr(first + 1, last - first - 1);
+        } else {
+          // MCU response for get_temp_history does not have a closing quote
+          val = line.substr(first + 1);
+        }
+      } else {
+        // No quotes present
+        size_t space_idx = line.find(' ');
+        val = (space_idx != std::string::npos) ? line.substr(space_idx + 1) : "";
+      }
+
+      // Trim trailing whitespace, \r, \n, or stray quotes
+      while (!val.empty() && (val.back() == '\r' || val.back() == '\n' || val.back() == ' ' || val.back() == '"')) {
+        val.pop_back();
+      }
+
+      if (val.length() >= 2 && val.length() % 2 == 0) {
+        bool is_hex = true;
+        for (char c : val) {
+          if (!isxdigit(c)) { is_hex = false; break; }
+        }
+        if (is_hex && val.length() > 2) {
+          // Temperature history hex stream:
+          // Walk backwards in 2-char hex chunks to find the most recent valid temperature in °C.
+          // Note: 0xAA (170) is used by the MCU as a cooking stage transition delimiter and must be skipped.
+          for (int i = (int)val.length() - 2; i >= 0; i -= 2) {
+            std::string byte_hex = val.substr(i, 2);
+            int temp_c = strtol(byte_hex.c_str(), nullptr, 16);
+            if (temp_c == 0xAA) {
+              continue; // Skip stage transition marker
+            }
+            if (temp_c > 0 && temp_c <= 150) {
+              if (this->temperature_sensor_ != nullptr) {
+                if (!this->temperature_sensor_->has_state() || this->temperature_sensor_->state != temp_c) {
+                  ESP_LOGD(TAG, "Cooking temperature history update: %d°C (points: %zu)", temp_c, val.length() / 2);
+                } else {
+                  ESP_LOGV(TAG, "Cooking temperature steady: %d°C (points: %zu)", temp_c, val.length() / 2);
+                }
                 this->temperature_sensor_->publish_state(temp_c);
               }
+              break;
             }
           }
         }
@@ -331,23 +364,23 @@ void ChunmiCooker::handle_line_(const std::string &line) {
   } else if (line == "restore" || line == "factory") {
     ESP_LOGW(TAG, "Host MCU requested Wi-Fi reset (%s) -> Rebooting...", line.c_str());
     if (this->last_button_text_sensor_ != nullptr) {
-      this->last_button_text_sensor_->publish_state("wifi_reset");
+      this->last_button_text_sensor_->publish_state("Wi-Fi Reset");
     }
     if (this->last_event_text_sensor_ != nullptr) {
-      this->last_event_text_sensor_->publish_state("wifi_reset");
+      this->last_event_text_sensor_->publish_state("Wi-Fi Reset");
     }
     this->set_network_state("unprov");
     App.safe_reboot();
   } else if (line == "menuchange") {
     ESP_LOGI(TAG, "Cooker menu changed on hardware lid");
     if (this->last_event_text_sensor_ != nullptr) {
-      this->last_event_text_sensor_->publish_state("menuchange");
+      this->last_event_text_sensor_->publish_state("Menu Changed");
     }
     this->queue_command("down get_prop \"all\"\r");
   } else if (line == "reboot") {
     ESP_LOGW(TAG, "Host MCU rebooted, re-sending local network sync");
     if (this->last_event_text_sensor_ != nullptr) {
-      this->last_event_text_sensor_->publish_state("mcu_reboot");
+      this->last_event_text_sensor_->publish_state("MCU Reboot");
     }
     this->set_network_state("local");
     this->queue_command("down get_prop \"all\"\r");
@@ -526,14 +559,9 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
       char b0_hex[3] = {setting_str[0], setting_str[1], '\0'};
       int b0 = strtol(b0_hex, nullptr, 16);
       bool akw = (b0 & 0x04) != 0;
-      bool low = (b0 & 0x08) != 0;
       if (this->auto_keep_warm_binary_sensor_ != nullptr &&
           (!this->auto_keep_warm_binary_sensor_->has_state() || this->auto_keep_warm_binary_sensor_->state != akw)) {
         this->auto_keep_warm_binary_sensor_->publish_state(akw);
-      }
-      if (this->lid_open_warning_binary_sensor_ != nullptr &&
-          (!this->lid_open_warning_binary_sensor_->has_state() || this->lid_open_warning_binary_sensor_->state != low)) {
-        this->lid_open_warning_binary_sensor_->publish_state(low);
       }
     }
   }
@@ -606,20 +634,63 @@ void ChunmiCooker::parse_json_result_(const std::string &json_str) {
   }
 }
 
+static std::string format_runstatus_event(const std::string &status) {
+  if (status.rfind("notice_", 0) == 0) {
+    // Format: notice_<recipe 8 hex><remaining 4 hex><stage 4 hex><notice_code 2 hex><param 2 hex><param 2 hex>
+    // e.g., notice_000002e100220080030000
+    if (status.length() >= 7 + 18) {
+      std::string code = status.substr(7 + 16, 2);
+      if (code == "01") return "Add Ingredient Notice";
+      if (code == "02") return "Stir Notice";
+      if (code == "03") return "Lid Opened";
+      if (code == "04") return "Close Lid Reminder";
+      if (code == "06") return "Steam Valve Notice";
+      if (code == "07") return "Pressure Notice";
+      return "Notice (Code " + code + ")";
+    }
+    return "Lid Open Notice";
+  }
+  if (status.rfind("fire_", 0) == 0) {
+    return "Heating Active";
+  }
+  if (status.rfind("start_", 0) == 0 || status.rfind("startp_", 0) == 0) {
+    return "Cooking Started";
+  }
+  if (status.rfind("cancel_", 0) == 0) {
+    return "Cooking Cancelled";
+  }
+  if (status.rfind("pause_", 0) == 0) {
+    return "Cooking Paused";
+  }
+  if (status.rfind("resume_", 0) == 0 || status.rfind("resumep_", 0) == 0) {
+    return "Cooking Resumed";
+  }
+  if (status.rfind("finish_", 0) == 0 || status.rfind("finisha_", 0) == 0) {
+    return "Cooking Finished";
+  }
+  if (status.rfind("menu_", 0) == 0 || status.rfind("menuf_", 0) == 0) {
+    return "Menu Selected";
+  }
+  if (status.rfind("cooking_", 0) == 0) {
+    return "Cooking";
+  }
+  return status;
+}
+
 void ChunmiCooker::handle_event_(const std::string &event_str) {
   ESP_LOGW(TAG, "MCU Alarm/Event: %s", event_str.c_str());
 
-  if (this->last_event_text_sensor_ != nullptr) {
-    this->last_event_text_sensor_->publish_state(event_str);
-  }
+  std::string event_desc = event_str;
 
   if (event_str.find("event nopan") != std::string::npos) {
     ESP_LOGW(TAG, "Inner cooking pot removed!");
+    event_desc = "Inner Pot Removed";
     if (this->pot_present_binary_sensor_ != nullptr) {
       this->pot_present_binary_sensor_->publish_state(false);
     }
   } else if (event_str.find("event riceready") != std::string::npos) {
     ESP_LOGI(TAG, "Rice ready / Cooking finished!");
+    event_desc = "Cooking Finished";
     if (this->stage_text_sensor_ != nullptr) {
       this->stage_text_sensor_->publish_state("Finished");
     }
@@ -632,31 +703,36 @@ void ChunmiCooker::handle_event_(const std::string &event_str) {
     if (this->error_binary_sensor_ != nullptr) {
       this->error_binary_sensor_->publish_state(true);
     }
+    std::string err_desc;
+    if (event_str.find("bottomsensorbad") != std::string::npos) {
+      err_desc = "Bottom Sensor Fault";
+    } else if (event_str.find("topsensorbad") != std::string::npos) {
+      err_desc = "Top Lid Sensor Fault";
+    } else if (event_str.find("igbtsensorbad") != std::string::npos) {
+      err_desc = "IGBT Sensor Fault";
+    } else if (event_str.find("botsensorhigh") != std::string::npos) {
+      err_desc = "Bottom Overheat";
+    } else if (event_str.find("topsensorhigh") != std::string::npos) {
+      err_desc = "Top Lid Overheat";
+    } else if (event_str.find("igbtsensorhigh") != std::string::npos) {
+      err_desc = "IGBT Overheat";
+    } else if (event_str.find("hvprotection") != std::string::npos) {
+      err_desc = "High Voltage Protection";
+    } else if (event_str.find("lvprotection") != std::string::npos) {
+      err_desc = "Low Voltage Protection";
+    } else if (event_str.find("wirebroken") != std::string::npos) {
+      err_desc = "Sensor/Coil Wire Broken";
+    } else {
+      err_desc = event_str;
+    }
+    event_desc = err_desc;
     if (this->error_text_sensor_ != nullptr) {
-      std::string err_desc;
-      if (event_str.find("bottomsensorbad") != std::string::npos) {
-        err_desc = "Bottom Sensor Fault";
-      } else if (event_str.find("topsensorbad") != std::string::npos) {
-        err_desc = "Top Lid Sensor Fault";
-      } else if (event_str.find("igbtsensorbad") != std::string::npos) {
-        err_desc = "IGBT Sensor Fault";
-      } else if (event_str.find("botsensorhigh") != std::string::npos) {
-        err_desc = "Bottom Overheat";
-      } else if (event_str.find("topsensorhigh") != std::string::npos) {
-        err_desc = "Top Lid Overheat";
-      } else if (event_str.find("igbtsensorhigh") != std::string::npos) {
-        err_desc = "IGBT Overheat";
-      } else if (event_str.find("hvprotection") != std::string::npos) {
-        err_desc = "High Voltage Protection";
-      } else if (event_str.find("lvprotection") != std::string::npos) {
-        err_desc = "Low Voltage Protection";
-      } else if (event_str.find("wirebroken") != std::string::npos) {
-        err_desc = "Sensor/Coil Wire Broken";
-      } else {
-        err_desc = event_str;
-      }
       this->error_text_sensor_->publish_state(err_desc);
     }
+  }
+
+  if (this->last_event_text_sensor_ != nullptr) {
+    this->last_event_text_sensor_->publish_state(event_desc);
   }
 }
 
@@ -669,11 +745,17 @@ void ChunmiCooker::handle_props_(const std::string &props_str) {
     if (first != std::string::npos && last != std::string::npos && last > first) {
       std::string btn = props_str.substr(first + 1, last - first - 1);
       ESP_LOGI(TAG, "Cooker Button Pressed: %s", btn.c_str());
+      std::string btn_name = btn;
+      if (btn == "start") btn_name = "Start";
+      else if (btn == "cancel") btn_name = "Cancel";
+      else if (btn == "select") btn_name = "Select";
+      else if (btn == "timer") btn_name = "Timer";
+
       if (this->last_button_text_sensor_ != nullptr) {
-        this->last_button_text_sensor_->publish_state(btn);
+        this->last_button_text_sensor_->publish_state(btn_name);
       }
       if (this->last_event_text_sensor_ != nullptr) {
-        this->last_event_text_sensor_->publish_state(btn);
+        this->last_event_text_sensor_->publish_state("Button: " + btn_name);
       }
       this->queue_command("down get_prop \"all\"\r");
     }
@@ -684,7 +766,7 @@ void ChunmiCooker::handle_props_(const std::string &props_str) {
       std::string status = props_str.substr(first + 1, last - first - 1);
       ESP_LOGI(TAG, "Cooker Runstatus Update: %s", status.c_str());
       if (this->last_event_text_sensor_ != nullptr) {
-        this->last_event_text_sensor_->publish_state(status);
+        this->last_event_text_sensor_->publish_state(format_runstatus_event(status));
       }
       this->queue_command("down get_prop \"all\"\r");
     }
@@ -694,9 +776,6 @@ void ChunmiCooker::handle_props_(const std::string &props_str) {
     if (first != std::string::npos && last != std::string::npos && last > first) {
       std::string ws = props_str.substr(first + 1, last - first - 1);
       ESP_LOGI(TAG, "Cooker Work Status Update: %s", ws.c_str());
-      if (this->last_event_text_sensor_ != nullptr) {
-        this->last_event_text_sensor_->publish_state(ws);
-      }
       this->queue_command("down get_prop \"all\"\r");
     }
   }

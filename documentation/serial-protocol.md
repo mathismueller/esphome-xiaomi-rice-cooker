@@ -84,11 +84,11 @@ The array contains exactly **12 elements**:
 | **0** | `func` (Mode) | `"waiting"` | ASCII Enum | Primary operational state: `waiting` (idle), `running` (cooking), `autokeepwarm` (warm), `precook` (delayed timer), `pause`, `error`. |
 | **1** | `menu` | `"0001"` | 4 Hex characters | Selected recipe ID (`0001` = Fine Rice / Jingzhu, `0002` = Quick Rice / Kuaizhu, `0003` = Porridge / Zhuzhou, `0004` = Keep Warm). |
 | **2** | `stage` | `"null"` / `"02000000ff"` | String | `null` when idle. When cooking, a 10-char hex string: Byte 0 is Stage ID, Bytes 1–2 Rice ID, Byte 3 Taste profile. |
-| **3** | `temp` | `"22"` / `"031e0b23"` | String / Encoded | Idle: Ambient temperature in °C as 2-digit decimal (e.g. `"22"` = 22°C). Cooking: 8-digit hex timestamp/temperature state. |
+| **3** | `temp` | `"22"` / `"031e0b230000"` | String / Encoded | **Idle / Waiting**: Current bottom NTC pan thermistor temperature in °C as decimal string (e.g. `"22"` = 22°C). **Cooking (`running`)**: Switches to a 12-char hex string containing elapsed/remaining execution timestamps; live temperature must be read via `get_temp_history`. |
 | **4** | `t_func` | `"60"` | Decimal String | Remaining duration of current phase in minutes (countdown timer). |
 | **5** | `t_precook` | `"-1"` / `"750"` | Signed Decimal String | Scheduled appointment delay in minutes. `"-1"` indicates no delayed timer is set. |
 | **6** | `t_cook` | `"60"` | Decimal String | Total duration of the selected cooking program in minutes. |
-| **7** | `setting` | `"0607"` | 4 Hex characters | 16-bit configuration bitmask. Byte 0: auto-keepwarm, display sleep. Byte 1: program-specific keepwarm toggles. |
+| **7** | `setting` | `"0607"` | 4 Hex characters | 16-bit configuration bitmask. Bit 2 (`0x04`): Auto keep-warm toggle. Bit 3 (`0x08`): Lid open warning buzzer feature enabled (configuration toggle, not a physical microswitch). |
 | **8** | `delay` | `"050415"` | 6 Hex characters | Interaction timeouts (hex): Byte 0 = LED off timeout (sec), Byte 1 = Lid open limit (sec), Byte 2 = Lid alarm delay (sec). |
 | **9** | `version` | `"0003001a"` | 8 Hex characters | Hardware version (upper 16 bits = `0x0003`) and MCU firmware version (lower 16 bits = `0x001a` / decimal 26). |
 | **10**| `favorite` | `"0103"` | 4 Hex characters | Stored favorite profile ID and settings. |
@@ -107,6 +107,21 @@ The array contains exactly **12 elements**:
 | `0x08` | Flavor Development | Cyclic temperature oscillation for optimal texture. |
 | `0x10` | Finished | Program completed; transitions automatically to keep-warm. |
 
+### 4.2 Temperature History Stream (`down get_temp_history`)
+
+When the appliance is actively cooking (`is_running_ == true`), real-time temperature is queried using `down get_temp_history\r`. 
+
+- **Idle Response**: When not cooking, the MCU replies with `result "0"\r\n`.
+- **Active Cooking Response**: The MCU returns an open-ended hex byte stream without a closing quote:
+  ```text
+  result "161515161c242a3031302f2eaa2f2f2e2f...\r\n
+  ```
+- **Data Structure**:
+  - Each byte (2 hex characters) represents a bottom pan NTC temperature sample in °C (e.g., `0x16` = 22°C, `0x3c` = 60°C, `0x64` = 100°C), recorded approximately every 10–15 seconds.
+  - **Stage Delimiter `0xAA`**: The byte `0xAA` (170) is emitted by the MCU firmware whenever the cooking cycle advances to a new cooking stage. Parsers must skip `0xAA` when inspecting recent samples.
+  - **Payload Length**: As cooking progresses over 60–90 minutes, the response stream grows up to 500+ characters (~250 bytes). UART receive buffers and software line buffers must be sized to at least 1024 bytes to prevent frame truncation and buffer overflow.
+
+
 ---
 
 ## 5. Asynchronous Events & Notifications (MCU $\rightarrow$ ESP)
@@ -114,9 +129,22 @@ The array contains exactly **12 elements**:
 The host MCU pushes spontaneous events on the serial line without waiting for a poll command.
 
 ### 5.1 Appliance Status Updates
-- `props button_pressed "<button>"\r\n`: A physical button on the lid was pressed (e.g., `start`, `cancel`, `menu`, `timer`).
-- `props runstatus "<status>_<id>"\r\n`: State transition broadcast.
-- `props work_status "<status>"\r\n`: Cooker operating phase update.
+- `props button_pressed "<button>"\r\n`: A physical button on the lid was pressed (e.g., `start`, `cancel`, `select`, `timer`).
+- `props runstatus "<status>_<payload>"\r\n`: State transition broadcast. Payload structure: `<prefix>_<recipe_8hex><remaining_min_4hex><stage_progress_4hex><code_2hex><param_2hex><param_2hex>`.
+  - `notice_<payload>`: Active cooking alert. Notice code byte indicates the alert type:
+    - `0x01`: Add Ingredient Notice (recipe step alert)
+    - `0x02`: Stir Notice
+    - `0x03`: Lid Opened Alert (emitted when lid is opened during cooking)
+    - `0x04`: Close Lid Reminder (warning buzzer if lid remains open)
+    - `0x06`: Steam Valve Notice
+    - `0x07`: Pressure Notice
+  - `fire_<payload>`: Heating element active or resumed.
+  - `start_<payload>` / `startp_<payload>`: Cooking program initiated.
+  - `cancel_<payload>`: Cooking program cancelled.
+  - `pause_<payload>`: Cooking program paused.
+  - `resume_<payload>` / `resumep_<payload>`: Cooking program resumed.
+  - `finish_<payload>` / `finisha_<payload>`: Cooking program finished.
+- `props work_status "<status>"\r\n`: Cooker operating phase update (`standby`, `cooking-quickly`, `preorder`, etc.).
 - `event riceready "%04x"\r\n`: Emitted when cooking program completes and ready chime plays.
 
 ### 5.2 Sensor & Safety Alarms

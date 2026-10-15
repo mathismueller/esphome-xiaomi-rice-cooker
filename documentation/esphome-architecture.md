@@ -80,9 +80,9 @@ classDiagram
   - Queues initial network status announcement: `down MIIO_net_change local\r`.
 - **`update()` (Polling Interval, 3s)**:
   - Queues status query: `down get_prop "all"\r`.
-  - If `is_running_`, also queues temperature history query: `down get_temp_history\r`.
+  - If `is_running_`, queues temperature history query: `down get_temp_history\r` every 12s (every 4th cycle) to track live pot temperature without congesting the serial bus.
 - **`loop()` (Every ESPHome cycle)**:
-  - Drains UART receive FIFO into `rx_buffer_`.
+  - Drains UART receive FIFO into `rx_buffer_` (capacity 1024 bytes).
   - Splits incoming data on `\r\n` line delimiters.
   - Passes complete lines to `handle_line_()`.
   - On receiving `get_down`, pops the next command from `command_queue_` and transmits it, or sends `down none\r`.
@@ -102,14 +102,13 @@ classDiagram
 | **Status** | Error Description | `text_sensor` | `event *` / MCU status | Specific hardware fault description (`None`, `Bottom Sensor Fault`, etc.) |
 | **Status** | Hardware Version | `text_sensor` | Status Index 9 (`version`) | Host MCU hardware revision (e.g. `v3`) |
 | **Status** | MCU Version | `text_sensor` | Status Index 9 / handshake | Host MCU firmware revision (e.g. `v26`) |
-| **Sensor** | Temperature | `sensor` | Status Index 3 / Temp History | Real-time temperature in °C (ambient when idle, pot temp when cooking) |
+| **Sensor** | Temperature | `sensor` | Status Index 3 / Temp History | Real-time temperature in °C (ambient when idle, pot temp when cooking via history stream) |
 | **Sensor** | Remaining Time | `sensor` | Status Index 4 (`t_func`) | Remaining countdown minutes |
 | **Sensor** | Program Duration | `sensor` | Status Index 6 (`t_cook`) | Total profile cooking duration in minutes |
 | **Sensor** | Delay Time | `sensor` | Status Index 5 (`t_precook`) | Scheduled appointment delay in minutes |
 | **Binary Sensor**| Inner Pot Present | `binary_sensor` | `event nopan` / Status | `ON` when inner pot is inserted, `OFF` when removed |
 | **Binary Sensor**| Error | `binary_sensor` | Status / `event *` alarms | `ON` if any safety cutoff or hardware fault is active |
 | **Binary Sensor**| Auto Keep Warm | `binary_sensor` | Status Index 7 (`setting`) | Auto keep-warm enabled |
-| **Binary Sensor**| Lid Open Warning | `binary_sensor` | Status Index 7 (`setting`) | Lid open alarm enabled |
 | **Select** | Menu Select | `select` | Sends `down set_menu "<profile>"\r` | Selects recipe profile without starting heating; mirrors physical menu button |
 | **Control** | Cancel - Stop | `button` | Sends `down set_func "end02"\r` | Immediately cancels active cooking or warming cycle |
 | **Control** | Start Selected Menu | `button` | Sends `down set_start "<profile>"\r` | Starts the currently selected menu profile |

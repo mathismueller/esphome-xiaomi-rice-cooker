@@ -31,6 +31,7 @@ uart:
   rx_pin: GPIO13
   tx_pin: GPIO15
   baud_rate: 115200
+  rx_buffer_size: 1024
 
 chunmi_cooker:
   id: my_cooker
@@ -96,6 +97,7 @@ sensor:
     # --- Operating Sensors & Cycle Metrics ---
     temperature:
       name: "Temperature"
+      force_update: true
     duration:
       name: "Program Duration"
     delay_time:
@@ -135,8 +137,6 @@ binary_sensor:
     # --- Operating Status & Sensors ---
     auto_keep_warm:
       name: "Auto Keep Warm"
-    lid_open_warning:
-      name: "Lid Open Warning"
     # --- Hardware & Safety Sensors ---
     pot_present:
       name: "Inner Pot Present"
