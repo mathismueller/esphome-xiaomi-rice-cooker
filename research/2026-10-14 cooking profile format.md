@@ -234,81 +234,77 @@ Optimized specifically for short-grain Japanese sushi rice (*shari*): shorter so
 
 ## 4. Python Profile Generator & Validator
 
-Use this script to create valid custom profiles for the rice cooker:
+A CLI helper script is available at [`scripts/generate_custom_profile.py`](../scripts/generate_custom_profile.py) to generate custom profiles and validate hex strings according to MCU firmware rules.
 
-```python
-import binascii
+### 4.1 Running the Script
 
-def generate_custom_profile(
-    menu_id: int,
-    duration_hours: int,
-    duration_minutes: int,
-    max_hours: int = 0,
-    max_minutes: int = 0,
-    min_hours: int = 0,
-    min_minutes: int = 0,
-    allow_keepwarm: bool = True,
-    stages_raw: bytes = None,
-    pwm_hold_raw: bytes = None
-) -> str:
-    """
-    Generate a 242-char hex profile string accepted by the NXP LPC11xx MCU.
-    Note: menu_id must be >= 0x0100 for custom profiles.
-    """
-    if menu_id < 0x0100 or menu_id > 0xFFFF:
-        raise ValueError("Custom profiles must have a Menu ID >= 0x0100 (0x0001-0x00FF are reserved)")
+Use `uv run` to execute the script in the project environment:
 
-    payload = bytearray(119)
-
-    # 1. Menu ID (Big-Endian)
-    payload[0:2] = menu_id.to_bytes(2, "big")
-
-    # 2. Features Bitmask
-    flags = 0x80  # Induction active
-    if allow_keepwarm:
-        flags |= 0x20
-    if max_hours > 0 or max_minutes > 0:
-        flags |= 0x02  # Adjustable duration
-    payload[2] = flags
-
-    # 3. Durations
-    payload[3] = duration_hours
-    payload[4] = duration_minutes
-    payload[5] = max_hours
-    payload[6] = max_minutes
-    payload[7] = min_hours
-    payload[8] = min_minutes
-    payload[9] = 0x01 if (max_hours > 0 or max_minutes > 0) else 0x00
-    payload[10:12] = (0x8002).to_bytes(2, "big")
-
-    # 4. Stages Curve (60 bytes, default zeroed for fixed profiles)
-    if stages_raw and len(stages_raw) == 60:
-        payload[12:72] = stages_raw
-
-    # 5. Induction Modulation & Hold (41 bytes)
-    if pwm_hold_raw and len(pwm_hold_raw) == 41:
-        payload[72:113] = pwm_hold_raw
-    else:
-        # Default hold table (Hold 73°C with end delimiters)
-        payload[72:113] = bytes.fromhex(
-            "00280a0082001e914e730801001e82ff736e0610ff756e02690a0f75826e0169101e75826e0169100069005a00"
-        )
-
-    # 6. Trailer (6 bytes null padding at 113..118 already zeroed)
-
-    # 7. Checksum (CRC-16/CCITT-FALSE across 119 bytes)
-    crc = binascii.crc_hqx(bytes(payload), 0x0000)
-    full_profile = bytes(payload) + crc.to_bytes(2, "big")
-
-    return full_profile.hex().upper()
-
-# Example: Generate Custom Steam Profile (ID 0x0105, 45 minutes)
-if __name__ == "__main__":
-    profile = generate_custom_profile(
-        menu_id=0x0105,
-        duration_hours=0,
-        duration_minutes=45,
-        allow_keepwarm=False
-    )
-    print("Generated Custom Profile (242 chars):", profile)
+```sh
+# Show help and all available options
+uv run scripts/generate_custom_profile.py --help
 ```
+
+### 4.2 Validating Existing Profiles
+
+Verify that a 242-character hex profile string satisfies length, CRC-16 checksum, and Menu ID requirements:
+
+```sh
+uv run scripts/generate_custom_profile.py validate "<HEX_PROFILE_STRING>"
+```
+
+To validate all known factory and experimental stock profiles at once:
+
+```sh
+uv run scripts/generate_custom_profile.py stock
+```
+
+### 4.3 Generating Custom Profiles
+
+> [!IMPORTANT]
+> The Menu ID must be $\ge \mathbf{0x0100}$ (256 decimal). Values between `0x0001` and `0x0004` are built-in MCU programs, and values between `0x0005` and `0x00FF` are reserved and will be rejected with MCU Error Code 7.
+
+#### Example 1: Custom Steam / Cooking Profile (45 Minutes, No Keep-Warm)
+```sh
+uv run scripts/generate_custom_profile.py generate \
+  --menu-id 0x0110 \
+  --minutes 45 \
+  --no-keepwarm
+```
+
+#### Example 2: Custom Rice Profile Based on Fine Rice Template (50 Minutes with Auto Keep-Warm)
+```sh
+uv run scripts/generate_custom_profile.py generate \
+  --menu-id 0x0120 \
+  --minutes 50 \
+  --keepwarm \
+  --template fine_rice
+```
+
+#### Example 3: Adjustable Duration Profile (30 min nominal, adjustable between 20 min and 60 min)
+```sh
+uv run scripts/generate_custom_profile.py generate \
+  --menu-id 0x0130 \
+  --minutes 30 \
+  --min-minutes 20 \
+  --max-minutes 60
+```
+
+### 4.4 Using Generated Profiles in ESPHome & Home Assistant
+
+Once generated, you can trigger cooking with the custom profile string using:
+
+1. **Home Assistant Action / Service**:
+   Call `esphome.<node_name>_send_raw_command` with `down set_start "<PROFILE_HEX>"`:
+   ```yaml
+   action: esphome.xiaomi_rice_cooker_send_raw_command
+   data:
+     command: 'down set_start "011080002D00000000008002..."'
+   ```
+
+2. **ESPHome YAML Automations**:
+   ```yaml
+   on_...:
+     - chunmi_cooker.start:
+         profile: "011080002D00000000008002..."
+   ```

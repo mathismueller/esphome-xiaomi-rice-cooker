@@ -13,12 +13,15 @@ hardware is out of scope.
 
 ## Documentation
 
-Detailed technical documentation is available under [`documentation/`](documentation/):
+Detailed technical documentation is available under [`documentation/`](documentation/) and [`research/`](research/):
 
 - [Hardware & Pinout Reference](documentation/hardware-and-pinout.md) — Silicon identification, pinouts for headers (UART1, UART2, Flash port, JW), and bench power setup.
 - [Serial Protocol Specification](documentation/serial-protocol.md) — Line-based 115200 8N1 protocol, downlink commands, 12-element status array schema, async event codes, and command queue architecture.
 - [Firmware Analysis & Flash Layout](documentation/firmware-analysis.md) — 2MB SPI flash geometry, bootloader, user1 miIO binary, embedded NXP LPC11xx MCU binary, and OTA mechanism.
 - [ESPHome Implementation Architecture](documentation/esphome-architecture.md) — Custom `chunmi_cooker` external component design, C++ classes, Home Assistant entity models, and native API services.
+- [Cooking Profile Format & Stage Curves](research/2026-10-14%20cooking%20profile%20format.md) — Binary profile format, 242-char schema, CRC-16 checksum, and custom profile generator.
+- [MCU Control & Thermodynamics](research/2026-10-14%20mcu%20cooking%20control%20and%20thermodynamics.md) — Microcontroller heating curves, phase transitions, and inverter modulation.
+- [Bench Setup & Feasibility](research/2026-09-25%20feasibility.md) — Bench wiring, safety checklist, UART headers, and expected signatures.
 
 ## Home Assistant Integration
 
@@ -64,32 +67,32 @@ uv run esphome compile dev.yaml       # compile firmware
 uv run esphome upload --device <IP> dev.yaml # OTA flash
 ```
 
-See `research/2026-09-25 feasibility.md` for the full bench procedure
-(wiring, safety checklist, the three UART headers, expected signatures).
+See [Bench Feasibility & Flashing Guide](research/2026-09-25%20feasibility.md) for the full bench procedure (wiring, safety checklist, the three UART headers, expected signatures).
 
 ## Safety
 
 - Appliance controller MCU (NXP LPC1100 ARM Cortex-M0) autonomously enforces all thermal safety margins, induction inverter drive, and pot detection loops.
-- Heater base stays **unplugged from mains** during bench flashing.
+- Heater base stays **unplugged from mains** during bench flashing. Use an external 5V bench supply for the main logic board, preferably with OCP.
 
 ## Layout
 
-- `components/` — custom `chunmi_cooker` ESPHome external component.
-- `packages/` — reusable ESPHome package (`packages/cooker.yaml`).
-- `dev.yaml` — local development configuration (includes local components).
-- `example.yaml` — reference configuration for external users importing from GitHub.
-- `documentation/` — structured technical guides, hardware pinouts, and protocol specs.
-- `research/` — chronological notes (teardown, feasibility, protocol, implementation logs).
-- `images/` — teardown photos (descriptive names).
-- `scripts/` — bench helpers.
-- `src/` — Python package scaffold.
+- [`components/`](components/) — custom `chunmi_cooker` ESPHome external component.
+- [`packages/`](packages/) — reusable ESPHome package ([`packages/cooker.yaml`](packages/cooker.yaml)).
+- [`dev.yaml`](dev.yaml) — local development configuration (includes local components).
+- [`example.yaml`](example.yaml) — reference configuration for external users importing from GitHub.
+- [`documentation/`](documentation/) — structured technical guides, hardware pinouts, and protocol specs.
+- [`research/`](research/) — chronological notes (teardown, feasibility, protocol, implementation logs).
+- [`images/`](images/) — teardown photos (descriptive names).
+- [`scripts/`](scripts/) — bench helpers and profile generator ([`scripts/generate_custom_profile.py`](scripts/generate_custom_profile.py)).
 - `tmp/` — captures, dumps, scratch (git-ignored, never committed).
 
 ## Disclaimer
 
 This is an independent community reverse-engineering project and is not affiliated with, endorsed by, or associated with Xiaomi Inc., Mijia, Chunmi, or their subsidiaries. All product names, trademarks, and registered trademarks are the property of their respective owners.
 
-This firmware and documentation are provided "as is", without warranty of any kind. Working on appliances that connect to AC mains electricity carries inherent risks of electric shock, fire, or burns. Always disconnect the cooker completely from AC mains power before servicing or flashing the low-voltage logic board.
+This firmware and documentation are provided "as is", without warranty of any kind. 
+
+Working on appliances that connect to AC mains electricity carries inherent risks of electric shock, fire, or burns. Always disconnect the cooker completely from AC mains power before servicing or flashing the low-voltage logic board.
 
 ## License
 
