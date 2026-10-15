@@ -7,9 +7,7 @@ We keep a directory with chronological notes under 'research'
 The README reflects the current state, is an entry point for new users and developers. As such it is updated as the project progresses. 
 
 ## ESPHome
-Use the projects esphome version instead of the systems that is managed by uv.
-
-Invoke with `esphome`.
+Use the projects esphome version managed through uv instead of the global version if possible: Invoke with `uv run esphome` and fall back to the global `esphome` command.
 
 ## Serial tools
 
@@ -18,7 +16,7 @@ Use `esptool` for chip interactions when there is a serial connnection.
 Suggest `picocom` to users if they should inspect the serial output manually.
 
 ## Python
-When using python scripts, use the projects uv environment instead of the sytem python.
+When using python scripts, use the projects uv environment instead of the system python.
 
 Command `uv`.
 
