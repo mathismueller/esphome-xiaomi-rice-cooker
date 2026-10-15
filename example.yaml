@@ -1,0 +1,18 @@
+substitutions:
+  name: "xiaomi-rice-cooker"
+  friendly_name: "Xiaomi Rice Cooker"
+
+packages:
+  rice_cooker: github://mathismueller/esphome-xiaomi-rice-cooker/packages/cooker.yaml@main
+
+# Device-specific secrets & networking
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: !secret fallback_ap_ssid
+    password: !secret fallback_ap_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key

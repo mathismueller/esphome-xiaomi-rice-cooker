@@ -1,6 +1,7 @@
 substitutions:
   name: "xiaomi-rice-cooker"
   friendly_name: "Xiaomi Rice Cooker"
+  external_components_source: "github://mathismueller/esphome-xiaomi-rice-cooker@main"
 
 esphome:
   name: ${name}
@@ -22,7 +23,8 @@ ota:
           id(my_cooker).set_network_state("updating");
 
 external_components:
-  - source: components # local folder
+  - source: ${external_components_source}
+    components: [ chunmi_cooker ]
 
 uart:
   id: cooker_uart
@@ -143,8 +145,6 @@ binary_sensor:
 
 # Home Assistant Native API
 api:
-  encryption:
-    key: !secret api_encryption_key
   services:
     - service: set_interaction
       variables:
@@ -180,13 +180,7 @@ api:
         - lambda: |-
             id(my_cooker).send_raw_command(command);
 
-# Wi-Fi configuration with LED status triggers and fallback AP
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  ap:
-    ssid: !secret fallback_ap_ssid
-    password: !secret fallback_ap_password
   on_connect:
     - lambda: |-
         id(my_cooker).set_network_state("local");
@@ -194,5 +188,4 @@ wifi:
     - lambda: |-
         id(my_cooker).set_network_state("offline");
 
-# Only shown during fallback
 captive_portal:

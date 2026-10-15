@@ -29,12 +29,39 @@ The firmware exposes full telemetry and control directly to Home Assistant witho
 * **Safety & Diagnostics**: Dedicated error text sensor (`sensor.error_description`) with granular hardware fault descriptions, last lid button pressed, and hardware/firmware revision info.
 * **Native API Actions / Services**: Call actions from Home Assistant automations or Developer Tools (`set_interaction`, `set_led_timeout`, `set_lid_warning_timeout`, `set_alarm_delay`, `send_raw_command`). See [Architecture Reference](documentation/esphome-architecture.md#41-home-assistant-native-api-services--actions) for parameters and syntax.
 
-## Quickstart
+## Usage in Your Local ESPHome Config
+
+To use this firmware in your own ESPHome setup without cloning the entire repository, reference the pre-built package directly in your YAML (see [`example.yaml`](example.yaml)):
+
+```yaml
+substitutions:
+  name: "xiaomi-rice-cooker"
+  friendly_name: "Xiaomi Rice Cooker"
+
+packages:
+  rice_cooker: github://mathismueller/esphome-xiaomi-rice-cooker/packages/cooker.yaml@main
+
+# Provide your local network and API credentials:
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: !secret fallback_ap_ssid
+    password: !secret fallback_ap_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+```
+
+## Quickstart (Development)
+
+To build and flash locally using the repository's development configuration [`dev.yaml`](dev.yaml):
 
 ```sh
-uv sync                                  # project-pinned esphome, esptool, pyserial
-uv run esphome compile cooker.yaml       # compile firmware
-uv run esphome upload --device <IP> cooker.yaml # OTA flash
+uv sync                               # project-pinned esphome, esptool, pyserial
+uv run esphome compile dev.yaml       # compile firmware
+uv run esphome upload --device <IP> dev.yaml # OTA flash
 ```
 
 See `research/2026-09-25 feasibility.md` for the full bench procedure
@@ -48,6 +75,9 @@ See `research/2026-09-25 feasibility.md` for the full bench procedure
 ## Layout
 
 - `components/` — custom `chunmi_cooker` ESPHome external component.
+- `packages/` — reusable ESPHome package (`packages/cooker.yaml`).
+- `dev.yaml` — local development configuration (includes local components).
+- `example.yaml` — reference configuration for external users importing from GitHub.
 - `documentation/` — structured technical guides, hardware pinouts, and protocol specs.
 - `research/` — chronological notes (teardown, feasibility, protocol, implementation logs).
 - `images/` — teardown photos (descriptive names).
